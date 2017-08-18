@@ -15,8 +15,26 @@ window.Vue = require('vue');
  * or customize the JavaScript scaffolding to fit your unique needs.
  */
 
-Vue.component('example', require('./components/Example.vue'));
+import Error from './Error.js'
+window.Error = Error
+
+Vue.component('login', require('./components/Login.vue'));
+Vue.component('navigation', require('./components/Navigation.vue'));
+Vue.component('cat-index', require('./components/CatIndex.vue'));
 
 const app = new Vue({
-    el: '#app'
+    el: '#app',
+    data: {
+        isAuthenticated: false
+    },
+
+    mounted() {
+        axios.get('/check')
+        .then(response => {
+            this.isAuthenticated = response.data.is_authenticated ? true : false;
+        })
+        .catch(error => {
+            console.error('error on check', error)
+        })
+    }
 });
