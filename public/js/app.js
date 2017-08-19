@@ -879,7 +879,12 @@ module.exports = __webpack_require__(49);
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Error_js__ = __webpack_require__(59);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__components_Navigation__ = __webpack_require__(43);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__components_Navigation___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__components_Navigation__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__components_Login__ = __webpack_require__(37);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__components_Login___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1__components_Login__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__components_CatIndex__ = __webpack_require__(64);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__components_CatIndex___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2__components_CatIndex__);
 
 /**
  * First we will load all of this project's JavaScript dependencies which
@@ -897,16 +902,20 @@ window.Vue = __webpack_require__(36);
  * or customize the JavaScript scaffolding to fit your unique needs.
  */
 
+//import routes from './routes'
 
-window.Error = __WEBPACK_IMPORTED_MODULE_0__Error_js__["a" /* default */];
 
-Vue.component('login', __webpack_require__(37));
-Vue.component('navigation', __webpack_require__(43));
-Vue.component('cat-index', __webpack_require__(64));
+
+
+
+Vue.component('navigation', __WEBPACK_IMPORTED_MODULE_0__components_Navigation___default.a);
+Vue.component('login', __WEBPACK_IMPORTED_MODULE_1__components_Login___default.a);
+Vue.component('cat-index', __WEBPACK_IMPORTED_MODULE_2__components_CatIndex___default.a);
 
 var app = new Vue({
     el: '#app',
     data: {
+        currentRoute: window.location.pathname,
         isAuthenticated: false
     },
 
@@ -42045,38 +42054,52 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     data: function data() {
         return {
             inProgress: false,
-            email: '',
+            name: '',
             password: '',
-            errors: new Error()
+            error: ''
         };
     },
 
 
     methods: {
         login: function login() {
-            var _this = this;
-
             this.inProgress = true;
+
+            var vm = this;
             axios.post('/login', {
-                email: this.email,
+                name: this.name,
                 password: this.password
             }).then(function (response) {
-                console.log('LOGGED IN', response);
-                _this.$emit('authenticated');
+                if (response.data.is_authenticated) {
+                    vm.$emit('authenticated');
+                } else {
+                    vm.error = 'Anmeldung fehlgeschlagen aufgrund von Serverproblemen.';
+                    console.error('Error: ', response);
+                }
+                setTimeout(function () {
+                    vm.inProgress = false;
+                }, 1000);
             }).catch(function (error) {
-                console.error('Something went wrong during the login process.', error);
+                vm.error = error.response.data.name;
+                setTimeout(function () {
+                    vm.inProgress = false;
+                }, 1000);
             });
         }
     },
 
     computed: {
         isFormReady: function isFormReady() {
-            return this.email.length > 0 && this.password.length > 0;
+            return this.name.length > 0 && this.password.length > 0;
         }
     }
 });
@@ -42086,7 +42109,15 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('form', {
+  return _c('div', [(_vm.error.length > 0) ? _c('div', {
+    staticClass: "alert alert-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error)
+    }
+  }) : _vm._e(), _vm._v(" "), _c('form', {
     on: {
       "submit": function($event) {
         $event.preventDefault();
@@ -42099,25 +42130,25 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.email),
-      expression: "email"
+      value: (_vm.name),
+      expression: "name"
     }],
     staticClass: "form-control",
     attrs: {
       "type": "text",
-      "id": "email",
-      "name": "email",
-      "placeholder": "E-Mail-Adresse",
+      "id": "name",
+      "name": "name",
+      "placeholder": "Benutzername",
       "disabled": _vm.inProgress,
       "required": ""
     },
     domProps: {
-      "value": (_vm.email)
+      "value": (_vm.name)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.email = $event.target.value
+        _vm.name = $event.target.value
       }
     }
   })]), _vm._v(" "), _c('div', {
@@ -42152,7 +42183,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "type": "submit",
       "disabled": !_vm.isFormReady || _vm.inProgress
     }
-  }, [_vm._v("Anmelden")])])
+  }, [_vm._v("Anmelden")])])])
 },staticRenderFns: []}
 module.exports.render._withStripped = true
 if (false) {
@@ -42490,19 +42521,7 @@ function toComment(sourceMap) {
 /* 56 */,
 /* 57 */,
 /* 58 */,
-/* 59 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var Error = function Error() {
-    _classCallCheck(this, Error);
-};
-
-/* harmony default export */ __webpack_exports__["a"] = (Error);
-
-/***/ }),
+/* 59 */,
 /* 60 */
 /***/ (function(module, exports, __webpack_require__) {
 

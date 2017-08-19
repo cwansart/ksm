@@ -1,8 +1,12 @@
 <?php
 
-Route::get('check', '\App\Http\Controllers\Auth\LoginController@check');
-Route::post('login', '\App\Http\Controllers\Auth\LoginController@login');
-
 Route::get('/', function () {
     return view('app');
 })->name('home');
+
+Route::get('check', 'Auth\LoginController@check');
+Route::post('login', 'Auth\LoginController@login');
+Route::get('logout', 'LoginController@logout');
+
+Route::resource('cat', 'CatController');
+

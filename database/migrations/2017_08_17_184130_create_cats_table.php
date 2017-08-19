@@ -45,7 +45,7 @@ class CreateCatsTable extends Migration
             $table->text('distinguishing_marks')->nullable();
             $table->text('comments')->nullable();
 
-            $table->boolean('deceased');
+            $table->boolean('deceased')->default(false);
             $table->string('cause_of_death');
 
             $table->boolean('is_indoor_cat')->default(true);

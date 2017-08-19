@@ -15,16 +15,20 @@ window.Vue = require('vue');
  * or customize the JavaScript scaffolding to fit your unique needs.
  */
 
-import Error from './Error.js'
-window.Error = Error
+//import routes from './routes'
 
-Vue.component('login', require('./components/Login.vue'));
-Vue.component('navigation', require('./components/Navigation.vue'));
-Vue.component('cat-index', require('./components/CatIndex.vue'));
+import Navigation from './components/Navigation'
+import Login from './components/Login'
+import CatIndex from './components/CatIndex'
+
+Vue.component('navigation', Navigation)
+Vue.component('login', Login)
+Vue.component('cat-index', CatIndex)
 
 const app = new Vue({
     el: '#app',
     data: {
+        currentRoute: window.location.pathname,
         isAuthenticated: false
     },
 
