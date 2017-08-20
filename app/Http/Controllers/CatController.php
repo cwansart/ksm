@@ -7,9 +7,9 @@ use Illuminate\Http\Request;
 
 class CatController extends Controller
 {
-    function __construct()
+    public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware('auth.json');
     }
 
     /**
@@ -19,6 +19,7 @@ class CatController extends Controller
      */
     public function index()
     {
+        //return response('', 404);
         return Cat::paginate();
     }
 

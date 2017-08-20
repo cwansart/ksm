@@ -5,9 +5,12 @@
  * building robust, powerful web applications using Vue and Laravel.
  */
 
-require('./bootstrap');
+import './bootstrap'
 
-window.Vue = require('vue');
+import Vue from 'vue'
+import VueRouter from 'vue-router'
+window.Vue = Vue
+Vue.use(VueRouter)
 
 /**
  * Next, we will create a fresh Vue application instance and attach it to
@@ -15,8 +18,7 @@ window.Vue = require('vue');
  * or customize the JavaScript scaffolding to fit your unique needs.
  */
 
-//import routes from './routes'
-
+import router from './routes'
 import Navigation from './components/Navigation'
 import Login from './components/Login'
 import CatIndex from './components/CatIndex'
@@ -27,18 +29,16 @@ Vue.component('cat-index', CatIndex)
 
 const app = new Vue({
     el: '#app',
+    router,
+
     data: {
         currentRoute: window.location.pathname,
-        isAuthenticated: false
+        isAuthenticated: window.InitialAuthenticated
     },
 
-    mounted() {
-        axios.get('/check')
-        .then(response => {
-            this.isAuthenticated = response.data.is_authenticated ? true : false;
-        })
-        .catch(error => {
-            console.error('error on check', error)
-        })
+    methods: {
+        toggle() {
+            this.isAuthenticated = !this.isAuthenticated
+        }
     }
 });

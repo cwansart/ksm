@@ -1,18 +1,20 @@
 <template>
-    <div>
-        <div class="alert alert-danger" role="alert" v-if="error.length > 0" v-text="error"></div>
-        
-        <form @submit.prevent="login">
-            <div class="form-group">
-                <input type="text" v-model="name" class="form-control" id="name" name="name" placeholder="Benutzername" :disabled="inProgress" required>
-            </div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="alert alert-danger" role="alert" v-if="error.length > 0" v-text="error"></div>
+            
+            <form @submit.prevent="login">
+                <div class="form-group">
+                    <input type="text" v-model="name" class="form-control" id="name" name="name" placeholder="Benutzername" :disabled="inProgress" required>
+                </div>
 
-            <div class="form-group">
-                <input type="password" v-model="password" class="form-control" id="password" placeholder="Passwort" :disabled="inProgress" required>
-            </div>
+                <div class="form-group">
+                    <input type="password" v-model="password" class="form-control" id="password" placeholder="Passwort" :disabled="inProgress" required>
+                </div>
 
-            <button type="submit" class="btn btn-primary" :disabled="!isFormReady || inProgress">Anmelden</button>
-        </form>
+                <button type="submit" class="btn btn-primary" :disabled="!isFormReady || inProgress">Anmelden</button>
+            </form>
+        </div>
     </div>
 </template>
 
@@ -38,7 +40,7 @@
                 })
                 .then(response => {
                     if (response.data.is_authenticated) {
-                        vm.$emit('authenticated')
+                        vm.$emit('login')
                     } else {
                         vm.error = 'Anmeldung fehlgeschlagen aufgrund von Serverproblemen.'
                         console.error('Error: ', response)
@@ -48,7 +50,7 @@
                     }, 1000)
                 })
                 .catch(error => {
-                    vm.error = error.response.data.name
+                    vm.error = error.response.data.name || ''
                     setTimeout(() => {
                         vm.inProgress = false
                     }, 1000)

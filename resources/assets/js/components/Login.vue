@@ -12,7 +12,7 @@
             </div>
             <div class="panel-body">
 
-                <login-form></login-form>
+                <login-form v-on="$listeners"></login-form>
             </div>
         </div>
     </div>
@@ -22,9 +22,6 @@
     import LoginForm from './LoginForm'
 
     export default {
-        mounted() {
-        },
-
         components: {
             LoginForm
         }
