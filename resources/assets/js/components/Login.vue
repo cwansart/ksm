@@ -1,7 +1,7 @@
 <template>
     <div id="login-form-wrapper">
         <div class="jumbotron">
-            <h1>Herlich Willkommen</h1>
+            <h1>Herzlich Willkommen</h1>
             <p>Die Verwaltungssoftware kann nur von angemeldeten Benutzern verwendet werden.</p>
             <p>Bitte melden Sie sich an.</p>
         </div>
