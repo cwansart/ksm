@@ -4,9 +4,9 @@
             <ul class="media-list">
                 <li class="media">
                     <div class="media-left">
-                    <a href="#">
-                        <img class="media-object cat-pic" :src="cat.photo_path">
-                    </a>
+                        <a href="#">
+                            <img class="media-object cat-pic" :src="cat.photo_path">
+                        </a>
                     </div>
                     <div class="media-body">
                         <h4 class="media-heading">{{ cat.name }}</h4>
