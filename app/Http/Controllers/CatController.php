@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Cat;
+use App\Http\Requests\CatRequest;
 use Illuminate\Http\Request;
 
 class CatController extends Controller
@@ -39,9 +40,9 @@ class CatController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(CatRequest $request)
     {
-        //
+        
     }
 
     /**

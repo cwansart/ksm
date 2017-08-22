@@ -116,6 +116,26 @@ return [
     |
     */
 
-    'attributes' => [],
+    'attributes' => [
+        'color' => 'Farbe',
+        'date_of_birth' => 'Geburtstag',
+        'registration_date' => 'Aufnahmedatum',
+        'leave_date' => 'Abgabedatum',
+        'castration_date' => 'Kastrationsdatum',
+        'first_vaccination' => 'Erste Impfung',
+        'second_vaccination' => 'Zweite Impfung',
+        'next_vaccination' => 'Nächste Impfung',
+        'tattoo_left' => 'Linke Tättowierung',
+        'tattoo_right' => 'Rechte Tättowierung',
+        'chip' => 'Chip',
+        'is_male' => 'Geschlecht',
+        'is_castrated' => 'Kastriert',
+        'deceased' => 'Verstorben',
+        'is_indoor_cat' => 'Innenkatze',
+        'is_outdoor_cat' => 'Außenkatze',
+        'is_cat_friendly' => 'Katzenfreundlich',
+        'is_dog_friendly' => 'Hundefreundlich',
+        'is_child_friendly' => 'Kinderfreundlich',
+    ],
 
 ];

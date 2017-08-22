@@ -20,33 +20,36 @@
 
                         <div class="form-group">
                             <label for="name">Name</label>
-                            <input type="text" v-model="name" name="name" class="form-control" placeholder="Name" :disabled="inProgress" >
+                            <input type="text" v-model="form.name" name="name" class="form-control" placeholder="Name" :disabled="inProgress" >
                         </div>
 
                         <div class="form-group">
                             <label for="breed">Rasse</label>
-                            <input type="text" v-model="breed" name="breed" class="form-control" placeholder="Rasse" :disabled="inProgress" >
+                            <input type="text" v-model="form.breed" name="breed" class="form-control" placeholder="Rasse" :disabled="inProgress" >
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.color }">
                             <label for="color">Farbe*</label>
-                            <input type="text" v-model="color" name="color" class="form-control" placeholder="Farbe" :disabled="inProgress" required>
+                            <input type="text" v-model="form.color" name="color" class="form-control" placeholder="Farbe" :disabled="inProgress" required>
+                            <p class="text-danger" role="alert" v-if="error.color" v-text="error.color[0]"></p>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.date_of_birth }">
                             <label for="date_of_birth">Geburtstdatum</label>
-                            <input type="date" v-model="date_of_birth" name="date_of_birth" class="form-control" placeholder="Geburtstdatum" :disabled="inProgress" >
+                            <input type="date" v-model="form.date_of_birth" name="date_of_birth" class="form-control" placeholder="Geburtstdatum" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.date_of_birth" v-text="error.date_of_birth[0]"></p>
                         </div>
 
-                        <div class="radio">
+                        <div class="radio" :class="{ 'has-error': error.is_male }">
                             <label class="radio-inline">
-                                <input type="radio" name="is_male" value="1" checked>
+                                <input type="radio" name="is_male" v-model="form.is_male" value="1" checked>
                                 männlich
                             </label>
                             <label class="radio-inline">
-                                <input type="radio" name="is_male" value="0" checked>
+                                <input type="radio" name="is_male" v-model="form.is_male" value="0" checked>
                                 weiblich
-                            </label>
+                            </label><br>
+                            <p class="text-danger" role="alert" v-if="error.is_male" v-text="error.is_male[0]"></p>
                         </div>
                     </div>
                     </div>
@@ -61,14 +64,16 @@
 
                     <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel">
                     <div class="panel-body">
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.registration_date }">
                             <label for="entry_date">Aufnahmedatum</label>
-                            <input type="date" v-model="entry_date" name="entry_date" class="form-control" placeholder="Aufnahmedatum" :disabled="inProgress">
+                            <input type="date" v-model="form.registration_date" name="entry_date" class="form-control" placeholder="Aufnahmedatum" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.registration_date" v-text="error.registration_date[0]"></p>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.leave_date }">
                             <label for="leave_date">Abgabedatum</label>
-                            <input type="date" v-model="leave_date" name="leave_date" class="form-control" placeholder="Abgabedatum" :disabled="inProgress">
+                            <input type="date" v-model="form.leave_date" name="leave_date" class="form-control" placeholder="Abgabedatum" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.leave_date" v-text="error.leave_date[0]"></p>
                         </div>
                     </div>
                     </div>
@@ -85,22 +90,22 @@
                     <div class="panel-body">
                         <div class="form-group">
                             <label for="location">Ortsname</label>
-                            <input type="text" v-model="location" name="location" class="form-control" placeholder="Ort, z. B. Fam. Müller" :disabled="inProgress">
+                            <input type="text" v-model="form.location" name="location" class="form-control" placeholder="Ort, z. B. Fam. Müller" :disabled="inProgress">
                         </div>
 
                         <div class="form-group">
                             <label for="street">Straße und Hausnummer</label>
-                            <input type="text" v-model="street" name="street" class="form-control" placeholder="z. B. Musterstr. 42" :disabled="inProgress">
+                            <input type="text" v-model="form.street" name="street" class="form-control" placeholder="z. B. Musterstr. 42" :disabled="inProgress">
                         </div>
 
                         <div class="form-group">
-                            <label for="zip">PLZ und Ort</label>
-                            <input type="text" v-model="street" name="street" class="form-control" placeholder="z. B. 49074 Osnabrück" :disabled="inProgress">
+                            <label for="city">PLZ und Ort</label>
+                            <input type="text" v-model="form.city" name="city" class="form-control" placeholder="z. B. 49074 Osnabrück" :disabled="inProgress">
                         </div>
 
                         <div class="form-group">
                             <label for="country">Land</label>
-                            <input type="text" v-model="country" name="country" class="form-control" placeholder="z. B. Deutschland" :disabled="inProgress">
+                            <input type="text" v-model="form.country" name="country" class="form-control" placeholder="z. B. Deutschland" :disabled="inProgress">
                         </div>
                     </div>
                     </div>
@@ -115,15 +120,17 @@
 
                     <div id="collapseFour" class="panel-collapse collapse" role="tabpanel">
                     <div class="panel-body">
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.is_castrated }">
                             <label for="is_castrated">Ist die Katze kastriert?</label>
-                            <input type="checkbox" name="is_castrated" v-model="is_castrated">
+                            <input type="checkbox" name="is_castrated" v-model="form.is_castrated"><br>
+                            <p class="text-danger" role="alert" v-if="error.is_castrated" v-text="error.is_castrated[0]"></p>
                         </div>
 
                         <transition name="component-fade" mode="out-in">
-                            <div class="form-group" v-if="is_castrated">
+                            <div class="form-group" v-if="form.is_castrated" :class="{ 'has-error': error.castration_date }">
                                 <label for="castration_date">Kastrationsdatum</label>
-                                <input type="date" v-model="castration_date" name="castration_date" class="form-control" placeholder="Kastrationsdatum" :disabled="inProgress">
+                                <input type="date" v-model="form.castration_date" name="castration_date" class="form-control" placeholder="Kastrationsdatum" :disabled="inProgress">
+                                <p class="text-danger" role="alert" v-if="error.castration_date" v-text="error.castration_date[0]"></p>
                             </div>
                         </transition>
                     </div>
@@ -139,19 +146,22 @@
 
                     <div id="collapseFive" class="panel-collapse collapse" role="tabpanel">
                     <div class="panel-body">
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.first_vaccination }">
                             <label for="first_vaccination">Erste Impfung</label>
-                            <input type="date" v-model="first_vaccination" name="first_vaccination" class="form-control" placeholder="Erste Impfung" :disabled="inProgress">
+                            <input type="date" v-model="form.first_vaccination" name="first_vaccination" class="form-control" placeholder="Erste Impfung" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.first_vaccination" v-text="error.first_vaccination[0]"></p>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.second_vaccination }">
                             <label for="second_vaccination">Zweite Impfung</label>
-                            <input type="date" v-model="second_vaccination" name="second_vaccination" class="form-control" placeholder="Zweite Impfung" :disabled="inProgress">
+                            <input type="date" v-model="form.second_vaccination" name="second_vaccination" class="form-control" placeholder="Zweite Impfung" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.second_vaccination" v-text="error.second_vaccination[0]"></p>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.next_vaccination }">
                             <label for="first_vaccination">Nächste Impfung</label>
-                            <input type="date" v-model="next_vaccination" name="next_vaccination" class="form-control" placeholder="Nächste Impfung" :disabled="inProgress">
+                            <input type="date" v-model="form.next_vaccination" name="next_vaccination" class="form-control" placeholder="Nächste Impfung" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.next_vaccination" v-text="error.next_vaccination[0]"></p>
                         </div>
                     </div>
                     </div>
@@ -166,19 +176,22 @@
 
                     <div id="collapseSix" class="panel-collapse collapse" role="tabpanel">
                     <div class="panel-body">
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.tattoo_left }">
                             <label for="tattoo_left">Tätowierung links</label>
-                            <input type="text" v-model="tattoo_left" name="tattoo_left" placeholder="Tätowierung links" class="form-control" maxlength="5" :disabled="inProgress">
+                            <input type="text" v-model="form.tattoo_left" name="tattoo_left" placeholder="Tätowierung links" class="form-control" maxlength="5" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.tattoo_left" v-text="error.tattoo_left[0]"></p>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.tattoo_right }">
                             <label for="tattoo_right">Tätowierung rechts</label>
-                            <input type="text" v-model="tattoo_right" name="tattoo_right" placeholder="Tätowierung links" class="form-control" maxlength="5" :disabled="inProgress">
+                            <input type="text" v-model="form.tattoo_right" name="tattoo_right" placeholder="Tätowierung links" class="form-control" maxlength="5" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.tattoo_right" v-text="error.tattoo_right[0]"></p>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.chip }">
                             <label for="chip">Chip</label>
-                            <input type="text" v-model="chip" name="chip" placeholder="Chipnummer" class="form-control" :disabled="inProgress">
+                            <input type="text" v-model="form.chip" name="chip" placeholder="Chipnummer" class="form-control" :disabled="inProgress">
+                            <p class="text-danger" role="alert" v-if="error.chip" v-text="error.chip[0]"></p>
                         </div>
                     </div>
                     </div>
@@ -195,12 +208,12 @@
                     <div class="panel-body">
                         <div class="form-group">
                             <label for="distinguishing_marks">Merkmale</label>
-                            <textarea class="form-control" rows="3" v-model="distinguishing_marks" :disabled="inProgress" placeholder="Merkmale, z. B. Knick im Schwanz"></textarea>
+                            <textarea class="form-control" rows="3" v-model="form.distinguishing_marks" :disabled="inProgress" placeholder="Merkmale, z. B. Knick im Schwanz"></textarea>
                         </div>
 
                         <div class="form-group">
                             <label for="comments">Kommentare</label>
-                            <textarea class="form-control" rows="3" v-model="comments" :disabled="inProgress" placeholder="Kommentare, z. B. Übergabe an Gabi"></textarea>
+                            <textarea class="form-control" rows="3" v-model="form.comments" :disabled="inProgress" placeholder="Kommentare, z. B. Übergabe an Gabi"></textarea>
                         </div>
                     </div>
                     </div>
@@ -215,15 +228,16 @@
 
                     <div id="collapseEight" class="panel-collapse collapse" role="tabpanel">
                     <div class="panel-body">
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.deceased }">
                             <label for="deceased">Ist die Katze verstorben?</label>
-                            <input type="checkbox" name="deceased" v-model="deceased">
+                            <input type="checkbox" name="deceased" v-model="form.deceased"><br>
+                            <p class="text-danger" role="alert" v-if="error.chip" v-text="error.chip[0]"></p>
                         </div>
 
                         <transition name="component-fade" mode="out-in">
-                            <div class="form-group" v-if="deceased">
+                            <div class="form-group" v-if="form.deceased">
                                 <label for="castration_date">Todesursache</label>
-                                <input type="date" v-model="cause_of_death" name="cause_of_death" class="form-control" placeholder="Kastrationsdatum" :disabled="inProgress">
+                                <input type="date" v-model="form.cause_of_death" name="cause_of_death" class="form-control" placeholder="Kastrationsdatum" :disabled="inProgress">
                             </div>
                         </transition>
                     </div>
@@ -239,29 +253,34 @@
 
                     <div id="collapseNine" class="panel-collapse collapse" role="tabpanel">
                     <div class="panel-body">
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.is_outdoor_cat }">
                             <label for="outdoor">Außenkatze?</label>
-                            <input type="checkbox" name="outdoor" v-model="outdoor">
+                            <input type="checkbox" name="outdoor" v-model="form.is_outdoor_cat"><br>
+                            <p class="text-danger" role="alert" v-if="error.is_outdoor_cat" v-text="error.is_outdoor_cat[0]"></p>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.is_indoor_cat }">
                             <label for="indoor">Innenkatze?</label>
-                            <input type="checkbox" name="indoor" v-model="indoor">
+                            <input type="checkbox" name="indoor" v-model="form.is_indoor_cat"><br>
+                            <p class="text-danger" role="alert" v-if="error.is_indoor_cat" v-text="error.is_indoor_cat[0]"></p>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.is_cat_friendly }">
                             <label for="cat_friendly">Katzenfreundlich?</label>
-                            <input type="checkbox" name="cat_friendly" v-model="cat_friendly">
+                            <input type="checkbox" name="cat_friendly" v-model="form.is_cat_friendly"><br>
+                            <p class="text-danger" role="alert" v-if="error.is_cat_friendly" v-text="error.is_cat_friendly[0]"></p>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.is_dog_friendly }">
                             <label for="dog_friendly">Hundefreundlich?</label>
-                            <input type="checkbox" name="dog_friendly" v-model="dog_friendly">
+                            <input type="checkbox" name="dog_friendly" v-model="form.is_dog_friendly"><br>
+                            <p class="text-danger" role="alert" v-if="error.is_dog_friendly" v-text="error.is_dog_friendly[0]"></p>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group" :class="{ 'has-error': error.is_child_friendly }">
                             <label for="child_friendly">Kinderfreundlich?</label>
-                            <input type="checkbox" name="child_friendly" v-model="child_friendly">
+                            <input type="checkbox" name="child_friendly" v-model="form.is_child_friendly"><br>
+                            <p class="text-danger" role="alert" v-if="error.is_child_friendly" v-text="error.is_child_friendly[0]"></p>
                         </div>
                     </div>
                     </div>
@@ -278,49 +297,60 @@
     export default {
         data() {
             return {
-                error: '',
+                error: {},
                 inProgress: false,
 
                 // Forms data
-                name: '',
-                breed: '',
-                color: '',
-                date_of_birth: '',
-                is_male: 1,
+                form: {
+                    name: '',
+                    breed: '',
+                    color: '',
+                    date_of_birth: '',
+                    is_male: 1,
 
-                entry_date: '',
-                leave_date: '',
+                    entry_date: '',
+                    leave_date: '',
 
-                is_castrated: false,
-                castration_date: '',
+                    location: '',
+                    street: '',
+                    country: '',
 
-                first_vaccination: '',
-                second_vaccination: '',
-                next_vaccination: '',
+                    is_castrated: false,
+                    castration_date: '',
 
-                tattoo_left: '',
-                tattoo_right: '',
-                chip: '',
+                    first_vaccination: '',
+                    second_vaccination: '',
+                    next_vaccination: '',
 
-                distinguishing_marks: '',
-                comments: '',
+                    tattoo_left: '',
+                    tattoo_right: '',
+                    chip: '',
 
-                deceased: false,
-                cause_of_death: '',
+                    distinguishing_marks: '',
+                    comments: '',
 
-                outdoor: false,
-                indoor: false,
-                cat_friendly: false,
-                dog_friendly: false,
-                child_friendly: false
+                    deceased: false,
+                    cause_of_death: '',
+
+                    outdoor: false,
+                    indoor: false,
+                    cat_friendly: false,
+                    dog_friendly: false,
+                    child_friendly: false
+                }
             }
         },
 
         methods: {
             store() {
-                console.log('STORE CALLED')
+                axios.post('/cats', this.form)
+                .then(response => {
+                    console.log('RESPONSE', response)
+                })
+                .catch(error => {
+                    this.error = error.response.data
+                })
             }
         }
     }
 </script>
-

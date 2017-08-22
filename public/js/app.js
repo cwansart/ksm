@@ -45468,52 +45468,83 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     data: function data() {
         return {
-            error: '',
+            error: {},
             inProgress: false,
 
             // Forms data
-            name: '',
-            breed: '',
-            color: '',
-            date_of_birth: '',
-            is_male: 1,
+            form: {
+                name: '',
+                breed: '',
+                color: '',
+                date_of_birth: '',
+                is_male: 1,
 
-            entry_date: '',
-            leave_date: '',
+                entry_date: '',
+                leave_date: '',
 
-            is_castrated: false,
-            castration_date: '',
+                location: '',
+                street: '',
+                country: '',
 
-            first_vaccination: '',
-            second_vaccination: '',
-            next_vaccination: '',
+                is_castrated: false,
+                castration_date: '',
 
-            tattoo_left: '',
-            tattoo_right: '',
-            chip: '',
+                first_vaccination: '',
+                second_vaccination: '',
+                next_vaccination: '',
 
-            distinguishing_marks: '',
-            comments: '',
+                tattoo_left: '',
+                tattoo_right: '',
+                chip: '',
 
-            deceased: false,
-            cause_of_death: '',
+                distinguishing_marks: '',
+                comments: '',
 
-            outdoor: false,
-            indoor: false,
-            cat_friendly: false,
-            dog_friendly: false,
-            child_friendly: false
+                deceased: false,
+                cause_of_death: '',
+
+                outdoor: false,
+                indoor: false,
+                cat_friendly: false,
+                dog_friendly: false,
+                child_friendly: false
+            }
         };
     },
 
 
     methods: {
         store: function store() {
-            console.log('STORE CALLED');
+            var _this = this;
+
+            axios.post('/cats', this.form).then(function (response) {
+                console.log('RESPONSE', response);
+            }).catch(function (error) {
+                _this.error = error.response.data;
+            });
         }
     }
 });
@@ -45560,8 +45591,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.name),
-      expression: "name"
+      value: (_vm.form.name),
+      expression: "form.name"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45571,12 +45602,12 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.name)
+      "value": (_vm.form.name)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.name = $event.target.value
+        _vm.form.name = $event.target.value
       }
     }
   })]), _vm._v(" "), _c('div', {
@@ -45589,8 +45620,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.breed),
-      expression: "breed"
+      value: (_vm.form.breed),
+      expression: "form.breed"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45600,16 +45631,19 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.breed)
+      "value": (_vm.form.breed)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.breed = $event.target.value
+        _vm.form.breed = $event.target.value
       }
     }
   })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.color
+    }
   }, [_c('label', {
     attrs: {
       "for": "color"
@@ -45618,8 +45652,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.color),
-      expression: "color"
+      value: (_vm.form.color),
+      expression: "form.color"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45630,16 +45664,27 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "required": ""
     },
     domProps: {
-      "value": (_vm.color)
+      "value": (_vm.form.color)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.color = $event.target.value
+        _vm.form.color = $event.target.value
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _vm._v(" "), (_vm.error.color) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.color[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.date_of_birth
+    }
   }, [_c('label', {
     attrs: {
       "for": "date_of_birth"
@@ -45648,8 +45693,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.date_of_birth),
-      expression: "date_of_birth"
+      value: (_vm.form.date_of_birth),
+      expression: "form.date_of_birth"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45659,17 +45704,84 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.date_of_birth)
+      "value": (_vm.form.date_of_birth)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.date_of_birth = $event.target.value
+        _vm.form.date_of_birth = $event.target.value
       }
     }
-  })]), _vm._v(" "), _vm._m(2)])])]), _vm._v(" "), _c('div', {
+  }), _vm._v(" "), (_vm.error.date_of_birth) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.date_of_birth[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "radio",
+    class: {
+      'has-error': _vm.error.is_male
+    }
+  }, [_c('label', {
+    staticClass: "radio-inline"
+  }, [_c('input', {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: (_vm.form.is_male),
+      expression: "form.is_male"
+    }],
+    attrs: {
+      "type": "radio",
+      "name": "is_male",
+      "value": "1",
+      "checked": ""
+    },
+    domProps: {
+      "checked": _vm._q(_vm.form.is_male, "1")
+    },
+    on: {
+      "__c": function($event) {
+        _vm.form.is_male = "1"
+      }
+    }
+  }), _vm._v("\n                            männlich\n                        ")]), _vm._v(" "), _c('label', {
+    staticClass: "radio-inline"
+  }, [_c('input', {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: (_vm.form.is_male),
+      expression: "form.is_male"
+    }],
+    attrs: {
+      "type": "radio",
+      "name": "is_male",
+      "value": "0",
+      "checked": ""
+    },
+    domProps: {
+      "checked": _vm._q(_vm.form.is_male, "0")
+    },
+    on: {
+      "__c": function($event) {
+        _vm.form.is_male = "0"
+      }
+    }
+  }), _vm._v("\n                            weiblich\n                        ")]), _c('br'), _vm._v(" "), (_vm.error.is_male) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.is_male[0])
+    }
+  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(3), _vm._v(" "), _c('div', {
+  }, [_vm._m(2), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseTwo",
@@ -45678,7 +45790,10 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "panel-body"
   }, [_c('div', {
-    staticClass: "form-group"
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.registration_date
+    }
   }, [_c('label', {
     attrs: {
       "for": "entry_date"
@@ -45687,8 +45802,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.entry_date),
-      expression: "entry_date"
+      value: (_vm.form.registration_date),
+      expression: "form.registration_date"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45698,16 +45813,27 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.entry_date)
+      "value": (_vm.form.registration_date)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.entry_date = $event.target.value
+        _vm.form.registration_date = $event.target.value
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _vm._v(" "), (_vm.error.registration_date) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.registration_date[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.leave_date
+    }
   }, [_c('label', {
     attrs: {
       "for": "leave_date"
@@ -45716,8 +45842,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.leave_date),
-      expression: "leave_date"
+      value: (_vm.form.leave_date),
+      expression: "form.leave_date"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45727,17 +45853,25 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.leave_date)
+      "value": (_vm.form.leave_date)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.leave_date = $event.target.value
+        _vm.form.leave_date = $event.target.value
       }
     }
-  })])])])]), _vm._v(" "), _c('div', {
+  }), _vm._v(" "), (_vm.error.leave_date) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.leave_date[0])
+    }
+  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(4), _vm._v(" "), _c('div', {
+  }, [_vm._m(3), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseThree",
@@ -45755,8 +45889,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.location),
-      expression: "location"
+      value: (_vm.form.location),
+      expression: "form.location"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45766,12 +45900,12 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.location)
+      "value": (_vm.form.location)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.location = $event.target.value
+        _vm.form.location = $event.target.value
       }
     }
   })]), _vm._v(" "), _c('div', {
@@ -45784,8 +45918,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.street),
-      expression: "street"
+      value: (_vm.form.street),
+      expression: "form.street"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45795,41 +45929,41 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.street)
+      "value": (_vm.form.street)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.street = $event.target.value
+        _vm.form.street = $event.target.value
       }
     }
   })]), _vm._v(" "), _c('div', {
     staticClass: "form-group"
   }, [_c('label', {
     attrs: {
-      "for": "zip"
+      "for": "city"
     }
   }, [_vm._v("PLZ und Ort")]), _vm._v(" "), _c('input', {
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.street),
-      expression: "street"
+      value: (_vm.form.city),
+      expression: "form.city"
     }],
     staticClass: "form-control",
     attrs: {
       "type": "text",
-      "name": "street",
+      "name": "city",
       "placeholder": "z. B. 49074 Osnabrück",
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.street)
+      "value": (_vm.form.city)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.street = $event.target.value
+        _vm.form.city = $event.target.value
       }
     }
   })]), _vm._v(" "), _c('div', {
@@ -45842,8 +45976,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.country),
-      expression: "country"
+      value: (_vm.form.country),
+      expression: "form.country"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45853,17 +45987,17 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.country)
+      "value": (_vm.form.country)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.country = $event.target.value
+        _vm.form.country = $event.target.value
       }
     }
   })])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(5), _vm._v(" "), _c('div', {
+  }, [_vm._m(4), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseFour",
@@ -45872,7 +46006,10 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "panel-body"
   }, [_c('div', {
-    staticClass: "form-group"
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.is_castrated
+    }
   }, [_c('label', {
     attrs: {
       "for": "is_castrated"
@@ -45881,41 +46018,52 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.is_castrated),
-      expression: "is_castrated"
+      value: (_vm.form.is_castrated),
+      expression: "form.is_castrated"
     }],
     attrs: {
       "type": "checkbox",
       "name": "is_castrated"
     },
     domProps: {
-      "checked": Array.isArray(_vm.is_castrated) ? _vm._i(_vm.is_castrated, null) > -1 : (_vm.is_castrated)
+      "checked": Array.isArray(_vm.form.is_castrated) ? _vm._i(_vm.form.is_castrated, null) > -1 : (_vm.form.is_castrated)
     },
     on: {
       "__c": function($event) {
-        var $$a = _vm.is_castrated,
+        var $$a = _vm.form.is_castrated,
           $$el = $event.target,
           $$c = $$el.checked ? (true) : (false);
         if (Array.isArray($$a)) {
           var $$v = null,
             $$i = _vm._i($$a, $$v);
           if ($$el.checked) {
-            $$i < 0 && (_vm.is_castrated = $$a.concat($$v))
+            $$i < 0 && (_vm.form.is_castrated = $$a.concat($$v))
           } else {
-            $$i > -1 && (_vm.is_castrated = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+            $$i > -1 && (_vm.form.is_castrated = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
           }
         } else {
-          _vm.is_castrated = $$c
+          _vm.form.is_castrated = $$c
         }
       }
     }
-  })]), _vm._v(" "), _c('transition', {
+  }), _c('br'), _vm._v(" "), (_vm.error.is_castrated) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.is_castrated[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('transition', {
     attrs: {
       "name": "component-fade",
       "mode": "out-in"
     }
-  }, [(_vm.is_castrated) ? _c('div', {
-    staticClass: "form-group"
+  }, [(_vm.form.is_castrated) ? _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.castration_date
+    }
   }, [_c('label', {
     attrs: {
       "for": "castration_date"
@@ -45924,8 +46072,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.castration_date),
-      expression: "castration_date"
+      value: (_vm.form.castration_date),
+      expression: "form.castration_date"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45935,17 +46083,25 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.castration_date)
+      "value": (_vm.form.castration_date)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.castration_date = $event.target.value
+        _vm.form.castration_date = $event.target.value
       }
     }
-  })]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
+  }), _vm._v(" "), (_vm.error.castration_date) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.castration_date[0])
+    }
+  }) : _vm._e()]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(6), _vm._v(" "), _c('div', {
+  }, [_vm._m(5), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseFive",
@@ -45954,7 +46110,10 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "panel-body"
   }, [_c('div', {
-    staticClass: "form-group"
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.first_vaccination
+    }
   }, [_c('label', {
     attrs: {
       "for": "first_vaccination"
@@ -45963,8 +46122,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.first_vaccination),
-      expression: "first_vaccination"
+      value: (_vm.form.first_vaccination),
+      expression: "form.first_vaccination"
     }],
     staticClass: "form-control",
     attrs: {
@@ -45974,16 +46133,27 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.first_vaccination)
+      "value": (_vm.form.first_vaccination)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.first_vaccination = $event.target.value
+        _vm.form.first_vaccination = $event.target.value
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _vm._v(" "), (_vm.error.first_vaccination) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.first_vaccination[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.second_vaccination
+    }
   }, [_c('label', {
     attrs: {
       "for": "second_vaccination"
@@ -45992,8 +46162,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.second_vaccination),
-      expression: "second_vaccination"
+      value: (_vm.form.second_vaccination),
+      expression: "form.second_vaccination"
     }],
     staticClass: "form-control",
     attrs: {
@@ -46003,16 +46173,27 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.second_vaccination)
+      "value": (_vm.form.second_vaccination)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.second_vaccination = $event.target.value
+        _vm.form.second_vaccination = $event.target.value
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _vm._v(" "), (_vm.error.second_vaccination) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.second_vaccination[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.next_vaccination
+    }
   }, [_c('label', {
     attrs: {
       "for": "first_vaccination"
@@ -46021,8 +46202,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.next_vaccination),
-      expression: "next_vaccination"
+      value: (_vm.form.next_vaccination),
+      expression: "form.next_vaccination"
     }],
     staticClass: "form-control",
     attrs: {
@@ -46032,17 +46213,25 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.next_vaccination)
+      "value": (_vm.form.next_vaccination)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.next_vaccination = $event.target.value
+        _vm.form.next_vaccination = $event.target.value
       }
     }
-  })])])])]), _vm._v(" "), _c('div', {
+  }), _vm._v(" "), (_vm.error.next_vaccination) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.next_vaccination[0])
+    }
+  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(7), _vm._v(" "), _c('div', {
+  }, [_vm._m(6), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseSix",
@@ -46051,7 +46240,10 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "panel-body"
   }, [_c('div', {
-    staticClass: "form-group"
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.tattoo_left
+    }
   }, [_c('label', {
     attrs: {
       "for": "tattoo_left"
@@ -46060,8 +46252,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.tattoo_left),
-      expression: "tattoo_left"
+      value: (_vm.form.tattoo_left),
+      expression: "form.tattoo_left"
     }],
     staticClass: "form-control",
     attrs: {
@@ -46072,16 +46264,27 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.tattoo_left)
+      "value": (_vm.form.tattoo_left)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.tattoo_left = $event.target.value
+        _vm.form.tattoo_left = $event.target.value
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _vm._v(" "), (_vm.error.tattoo_left) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.tattoo_left[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.tattoo_right
+    }
   }, [_c('label', {
     attrs: {
       "for": "tattoo_right"
@@ -46090,8 +46293,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.tattoo_right),
-      expression: "tattoo_right"
+      value: (_vm.form.tattoo_right),
+      expression: "form.tattoo_right"
     }],
     staticClass: "form-control",
     attrs: {
@@ -46102,16 +46305,27 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.tattoo_right)
+      "value": (_vm.form.tattoo_right)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.tattoo_right = $event.target.value
+        _vm.form.tattoo_right = $event.target.value
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _vm._v(" "), (_vm.error.tattoo_right) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.tattoo_right[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.chip
+    }
   }, [_c('label', {
     attrs: {
       "for": "chip"
@@ -46120,8 +46334,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.chip),
-      expression: "chip"
+      value: (_vm.form.chip),
+      expression: "form.chip"
     }],
     staticClass: "form-control",
     attrs: {
@@ -46131,17 +46345,25 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.chip)
+      "value": (_vm.form.chip)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.chip = $event.target.value
+        _vm.form.chip = $event.target.value
       }
     }
-  })])])])]), _vm._v(" "), _c('div', {
+  }), _vm._v(" "), (_vm.error.chip) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.chip[0])
+    }
+  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(8), _vm._v(" "), _c('div', {
+  }, [_vm._m(7), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseSeven",
@@ -46159,8 +46381,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.distinguishing_marks),
-      expression: "distinguishing_marks"
+      value: (_vm.form.distinguishing_marks),
+      expression: "form.distinguishing_marks"
     }],
     staticClass: "form-control",
     attrs: {
@@ -46169,12 +46391,12 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "placeholder": "Merkmale, z. B. Knick im Schwanz"
     },
     domProps: {
-      "value": (_vm.distinguishing_marks)
+      "value": (_vm.form.distinguishing_marks)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.distinguishing_marks = $event.target.value
+        _vm.form.distinguishing_marks = $event.target.value
       }
     }
   })]), _vm._v(" "), _c('div', {
@@ -46187,8 +46409,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.comments),
-      expression: "comments"
+      value: (_vm.form.comments),
+      expression: "form.comments"
     }],
     staticClass: "form-control",
     attrs: {
@@ -46197,17 +46419,17 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "placeholder": "Kommentare, z. B. Übergabe an Gabi"
     },
     domProps: {
-      "value": (_vm.comments)
+      "value": (_vm.form.comments)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.comments = $event.target.value
+        _vm.form.comments = $event.target.value
       }
     }
   })])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(9), _vm._v(" "), _c('div', {
+  }, [_vm._m(8), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseEight",
@@ -46216,7 +46438,10 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "panel-body"
   }, [_c('div', {
-    staticClass: "form-group"
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.deceased
+    }
   }, [_c('label', {
     attrs: {
       "for": "deceased"
@@ -46225,40 +46450,48 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.deceased),
-      expression: "deceased"
+      value: (_vm.form.deceased),
+      expression: "form.deceased"
     }],
     attrs: {
       "type": "checkbox",
       "name": "deceased"
     },
     domProps: {
-      "checked": Array.isArray(_vm.deceased) ? _vm._i(_vm.deceased, null) > -1 : (_vm.deceased)
+      "checked": Array.isArray(_vm.form.deceased) ? _vm._i(_vm.form.deceased, null) > -1 : (_vm.form.deceased)
     },
     on: {
       "__c": function($event) {
-        var $$a = _vm.deceased,
+        var $$a = _vm.form.deceased,
           $$el = $event.target,
           $$c = $$el.checked ? (true) : (false);
         if (Array.isArray($$a)) {
           var $$v = null,
             $$i = _vm._i($$a, $$v);
           if ($$el.checked) {
-            $$i < 0 && (_vm.deceased = $$a.concat($$v))
+            $$i < 0 && (_vm.form.deceased = $$a.concat($$v))
           } else {
-            $$i > -1 && (_vm.deceased = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+            $$i > -1 && (_vm.form.deceased = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
           }
         } else {
-          _vm.deceased = $$c
+          _vm.form.deceased = $$c
         }
       }
     }
-  })]), _vm._v(" "), _c('transition', {
+  }), _c('br'), _vm._v(" "), (_vm.error.chip) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.chip[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('transition', {
     attrs: {
       "name": "component-fade",
       "mode": "out-in"
     }
-  }, [(_vm.deceased) ? _c('div', {
+  }, [(_vm.form.deceased) ? _c('div', {
     staticClass: "form-group"
   }, [_c('label', {
     attrs: {
@@ -46268,8 +46501,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.cause_of_death),
-      expression: "cause_of_death"
+      value: (_vm.form.cause_of_death),
+      expression: "form.cause_of_death"
     }],
     staticClass: "form-control",
     attrs: {
@@ -46279,17 +46512,17 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "disabled": _vm.inProgress
     },
     domProps: {
-      "value": (_vm.cause_of_death)
+      "value": (_vm.form.cause_of_death)
     },
     on: {
       "input": function($event) {
         if ($event.target.composing) { return; }
-        _vm.cause_of_death = $event.target.value
+        _vm.form.cause_of_death = $event.target.value
       }
     }
   })]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(10), _vm._v(" "), _c('div', {
+  }, [_vm._m(9), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseNine",
@@ -46298,7 +46531,10 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "panel-body"
   }, [_c('div', {
-    staticClass: "form-group"
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.is_outdoor_cat
+    }
   }, [_c('label', {
     attrs: {
       "for": "outdoor"
@@ -46307,36 +46543,47 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.outdoor),
-      expression: "outdoor"
+      value: (_vm.form.is_outdoor_cat),
+      expression: "form.is_outdoor_cat"
     }],
     attrs: {
       "type": "checkbox",
       "name": "outdoor"
     },
     domProps: {
-      "checked": Array.isArray(_vm.outdoor) ? _vm._i(_vm.outdoor, null) > -1 : (_vm.outdoor)
+      "checked": Array.isArray(_vm.form.is_outdoor_cat) ? _vm._i(_vm.form.is_outdoor_cat, null) > -1 : (_vm.form.is_outdoor_cat)
     },
     on: {
       "__c": function($event) {
-        var $$a = _vm.outdoor,
+        var $$a = _vm.form.is_outdoor_cat,
           $$el = $event.target,
           $$c = $$el.checked ? (true) : (false);
         if (Array.isArray($$a)) {
           var $$v = null,
             $$i = _vm._i($$a, $$v);
           if ($$el.checked) {
-            $$i < 0 && (_vm.outdoor = $$a.concat($$v))
+            $$i < 0 && (_vm.form.is_outdoor_cat = $$a.concat($$v))
           } else {
-            $$i > -1 && (_vm.outdoor = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+            $$i > -1 && (_vm.form.is_outdoor_cat = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
           }
         } else {
-          _vm.outdoor = $$c
+          _vm.form.is_outdoor_cat = $$c
         }
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _c('br'), _vm._v(" "), (_vm.error.is_outdoor_cat) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.is_outdoor_cat[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.is_indoor_cat
+    }
   }, [_c('label', {
     attrs: {
       "for": "indoor"
@@ -46345,36 +46592,47 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.indoor),
-      expression: "indoor"
+      value: (_vm.form.is_indoor_cat),
+      expression: "form.is_indoor_cat"
     }],
     attrs: {
       "type": "checkbox",
       "name": "indoor"
     },
     domProps: {
-      "checked": Array.isArray(_vm.indoor) ? _vm._i(_vm.indoor, null) > -1 : (_vm.indoor)
+      "checked": Array.isArray(_vm.form.is_indoor_cat) ? _vm._i(_vm.form.is_indoor_cat, null) > -1 : (_vm.form.is_indoor_cat)
     },
     on: {
       "__c": function($event) {
-        var $$a = _vm.indoor,
+        var $$a = _vm.form.is_indoor_cat,
           $$el = $event.target,
           $$c = $$el.checked ? (true) : (false);
         if (Array.isArray($$a)) {
           var $$v = null,
             $$i = _vm._i($$a, $$v);
           if ($$el.checked) {
-            $$i < 0 && (_vm.indoor = $$a.concat($$v))
+            $$i < 0 && (_vm.form.is_indoor_cat = $$a.concat($$v))
           } else {
-            $$i > -1 && (_vm.indoor = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+            $$i > -1 && (_vm.form.is_indoor_cat = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
           }
         } else {
-          _vm.indoor = $$c
+          _vm.form.is_indoor_cat = $$c
         }
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _c('br'), _vm._v(" "), (_vm.error.is_indoor_cat) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.is_indoor_cat[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.is_cat_friendly
+    }
   }, [_c('label', {
     attrs: {
       "for": "cat_friendly"
@@ -46383,36 +46641,47 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.cat_friendly),
-      expression: "cat_friendly"
+      value: (_vm.form.is_cat_friendly),
+      expression: "form.is_cat_friendly"
     }],
     attrs: {
       "type": "checkbox",
       "name": "cat_friendly"
     },
     domProps: {
-      "checked": Array.isArray(_vm.cat_friendly) ? _vm._i(_vm.cat_friendly, null) > -1 : (_vm.cat_friendly)
+      "checked": Array.isArray(_vm.form.is_cat_friendly) ? _vm._i(_vm.form.is_cat_friendly, null) > -1 : (_vm.form.is_cat_friendly)
     },
     on: {
       "__c": function($event) {
-        var $$a = _vm.cat_friendly,
+        var $$a = _vm.form.is_cat_friendly,
           $$el = $event.target,
           $$c = $$el.checked ? (true) : (false);
         if (Array.isArray($$a)) {
           var $$v = null,
             $$i = _vm._i($$a, $$v);
           if ($$el.checked) {
-            $$i < 0 && (_vm.cat_friendly = $$a.concat($$v))
+            $$i < 0 && (_vm.form.is_cat_friendly = $$a.concat($$v))
           } else {
-            $$i > -1 && (_vm.cat_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+            $$i > -1 && (_vm.form.is_cat_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
           }
         } else {
-          _vm.cat_friendly = $$c
+          _vm.form.is_cat_friendly = $$c
         }
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _c('br'), _vm._v(" "), (_vm.error.is_cat_friendly) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.is_cat_friendly[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.is_dog_friendly
+    }
   }, [_c('label', {
     attrs: {
       "for": "dog_friendly"
@@ -46421,36 +46690,47 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.dog_friendly),
-      expression: "dog_friendly"
+      value: (_vm.form.is_dog_friendly),
+      expression: "form.is_dog_friendly"
     }],
     attrs: {
       "type": "checkbox",
       "name": "dog_friendly"
     },
     domProps: {
-      "checked": Array.isArray(_vm.dog_friendly) ? _vm._i(_vm.dog_friendly, null) > -1 : (_vm.dog_friendly)
+      "checked": Array.isArray(_vm.form.is_dog_friendly) ? _vm._i(_vm.form.is_dog_friendly, null) > -1 : (_vm.form.is_dog_friendly)
     },
     on: {
       "__c": function($event) {
-        var $$a = _vm.dog_friendly,
+        var $$a = _vm.form.is_dog_friendly,
           $$el = $event.target,
           $$c = $$el.checked ? (true) : (false);
         if (Array.isArray($$a)) {
           var $$v = null,
             $$i = _vm._i($$a, $$v);
           if ($$el.checked) {
-            $$i < 0 && (_vm.dog_friendly = $$a.concat($$v))
+            $$i < 0 && (_vm.form.is_dog_friendly = $$a.concat($$v))
           } else {
-            $$i > -1 && (_vm.dog_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+            $$i > -1 && (_vm.form.is_dog_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
           }
         } else {
-          _vm.dog_friendly = $$c
+          _vm.form.is_dog_friendly = $$c
         }
       }
     }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
+  }), _c('br'), _vm._v(" "), (_vm.error.is_dog_friendly) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.is_dog_friendly[0])
+    }
+  }) : _vm._e()]), _vm._v(" "), _c('div', {
+    staticClass: "form-group",
+    class: {
+      'has-error': _vm.error.is_child_friendly
+    }
   }, [_c('label', {
     attrs: {
       "for": "child_friendly"
@@ -46459,35 +46739,43 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     directives: [{
       name: "model",
       rawName: "v-model",
-      value: (_vm.child_friendly),
-      expression: "child_friendly"
+      value: (_vm.form.is_child_friendly),
+      expression: "form.is_child_friendly"
     }],
     attrs: {
       "type": "checkbox",
       "name": "child_friendly"
     },
     domProps: {
-      "checked": Array.isArray(_vm.child_friendly) ? _vm._i(_vm.child_friendly, null) > -1 : (_vm.child_friendly)
+      "checked": Array.isArray(_vm.form.is_child_friendly) ? _vm._i(_vm.form.is_child_friendly, null) > -1 : (_vm.form.is_child_friendly)
     },
     on: {
       "__c": function($event) {
-        var $$a = _vm.child_friendly,
+        var $$a = _vm.form.is_child_friendly,
           $$el = $event.target,
           $$c = $$el.checked ? (true) : (false);
         if (Array.isArray($$a)) {
           var $$v = null,
             $$i = _vm._i($$a, $$v);
           if ($$el.checked) {
-            $$i < 0 && (_vm.child_friendly = $$a.concat($$v))
+            $$i < 0 && (_vm.form.is_child_friendly = $$a.concat($$v))
           } else {
-            $$i > -1 && (_vm.child_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+            $$i > -1 && (_vm.form.is_child_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
           }
         } else {
-          _vm.child_friendly = $$c
+          _vm.form.is_child_friendly = $$c
         }
       }
     }
-  })])])])])]), _vm._v(" "), _c('button', {
+  }), _c('br'), _vm._v(" "), (_vm.error.is_child_friendly) ? _c('p', {
+    staticClass: "text-danger",
+    attrs: {
+      "role": "alert"
+    },
+    domProps: {
+      "textContent": _vm._s(_vm.error.is_child_friendly[0])
+    }
+  }) : _vm._e()])])])])]), _vm._v(" "), _c('button', {
     staticClass: "btn btn-primary pull-right",
     attrs: {
       "type": "submit",
@@ -46527,28 +46815,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "id": "photo"
     }
   })])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "radio"
-  }, [_c('label', {
-    staticClass: "radio-inline"
-  }, [_c('input', {
-    attrs: {
-      "type": "radio",
-      "name": "is_male",
-      "value": "1",
-      "checked": ""
-    }
-  }), _vm._v("\n                            männlich\n                        ")]), _vm._v(" "), _c('label', {
-    staticClass: "radio-inline"
-  }, [_c('input', {
-    attrs: {
-      "type": "radio",
-      "name": "is_male",
-      "value": "0",
-      "checked": ""
-    }
-  }), _vm._v("\n                            weiblich\n                        ")])])
 },function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
   return _c('div', {
     staticClass: "panel-heading",

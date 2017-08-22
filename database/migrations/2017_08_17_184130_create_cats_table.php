@@ -26,7 +26,6 @@ class CreateCatsTable extends Migration
 
             $table->string('location')->nullable();
             $table->string('street')->nullable();
-            $table->string('zip')->nullable();
             $table->string('city')->nullable();
             $table->string('country')->nullable();
 
