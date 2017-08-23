@@ -349,6 +349,8 @@
                 })
                 .catch(error => {
                     this.error = error.response.data
+                    let firstError = Object.keys(this.error)[0]
+                    $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
                 })
             }
         }
