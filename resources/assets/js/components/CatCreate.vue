@@ -5,7 +5,7 @@
                 <div class="panel-group" id="accordion" role="tablist">
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne">
+                        <a role="button" data-toggle="collapse"  href="#collapseOne">
                             Basisdaten
                         </a>
                     </div>
@@ -57,7 +57,7 @@
 
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo">
+                        <a role="button" data-toggle="collapse"  href="#collapseTwo">
                             Aufnahme und Abgabe
                         </a>
                     </div>
@@ -81,7 +81,7 @@
 
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree">
+                        <a role="button" data-toggle="collapse"  href="#collapseThree">
                            Aufenthaltsort
                         </a>
                     </div>
@@ -113,7 +113,7 @@
 
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour">
+                        <a role="button" data-toggle="collapse"  href="#collapseFour">
                             Kastration
                         </a>
                     </div>
@@ -139,7 +139,7 @@
 
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFive">
+                        <a role="button" data-toggle="collapse"  href="#collapseFive">
                             Impfungen
                         </a>
                     </div>
@@ -169,7 +169,7 @@
 
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseSix">
+                        <a role="button" data-toggle="collapse"  href="#collapseSix">
                             Tätowierung
                         </a>
                     </div>
@@ -199,7 +199,7 @@
 
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseSeven">
+                        <a role="button" data-toggle="collapse"  href="#collapseSeven">
                             Kommentare und Merkmale
                         </a>
                     </div>
@@ -221,7 +221,7 @@
 
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseEight">
+                        <a role="button" data-toggle="collapse"  href="#collapseEight">
                             Todesfall
                         </a>
                     </div>
@@ -246,7 +246,7 @@
 
                 <div class="panel panel-default">
                     <div class="panel-heading" role="tab">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseNine">
+                        <a role="button" data-toggle="collapse"  href="#collapseNine">
                             Eigenschaften
                         </a>
                     </div>

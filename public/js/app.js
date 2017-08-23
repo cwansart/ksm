@@ -46794,7 +46794,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseOne"
     }
   }, [_vm._v("\n                        Basisdaten\n                    ")])])
@@ -46827,7 +46826,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseTwo"
     }
   }, [_vm._v("\n                        Aufnahme und Abgabe\n                    ")])])
@@ -46841,7 +46839,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseThree"
     }
   }, [_vm._v("\n                       Aufenthaltsort\n                    ")])])
@@ -46855,7 +46852,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseFour"
     }
   }, [_vm._v("\n                        Kastration\n                    ")])])
@@ -46869,7 +46865,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseFive"
     }
   }, [_vm._v("\n                        Impfungen\n                    ")])])
@@ -46883,7 +46878,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseSix"
     }
   }, [_vm._v("\n                        Tätowierung\n                    ")])])
@@ -46897,7 +46891,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseSeven"
     }
   }, [_vm._v("\n                        Kommentare und Merkmale\n                    ")])])
@@ -46911,7 +46904,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseEight"
     }
   }, [_vm._v("\n                        Todesfall\n                    ")])])
@@ -46925,7 +46917,6 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "role": "button",
       "data-toggle": "collapse",
-      "data-parent": "#accordion",
       "href": "#collapseNine"
     }
   }, [_vm._v("\n                        Eigenschaften\n                    ")])])
