@@ -42,7 +42,8 @@ class CatController extends Controller
      */
     public function store(CatRequest $request)
     {
-        
+        $cat = Cat::create($request->all());
+        return ['message' => trans('messages.cat_saved'), 'cat_id' => $cat->id];
     }
 
     /**

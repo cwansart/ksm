@@ -12,6 +12,7 @@ import VueRouter from 'vue-router'
 window.Vue = Vue
 Vue.use(VueRouter)
 
+
 /**
  * Next, we will create a fresh Vue application instance and attach it to
  * the page. Then, you may begin adding components to this application
@@ -39,6 +40,10 @@ const app = new Vue({
     methods: {
         toggle() {
             this.isAuthenticated = !this.isAuthenticated
+        },
+
+        onMessage(event) {
+            console.log('RECEIVED MESSAGE', event)
         }
     }
 });

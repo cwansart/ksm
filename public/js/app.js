@@ -3791,6 +3791,9 @@ var app = new __WEBPACK_IMPORTED_MODULE_1_vue___default.a({
     methods: {
         toggle: function toggle() {
             this.isAuthenticated = !this.isAuthenticated;
+        },
+        onMessage: function onMessage(event) {
+            console.log('RECEIVED MESSAGE', event);
         }
     }
 });
@@ -45540,12 +45543,19 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
         store: function store() {
             var _this = this;
 
+            this.inProgress = true;
+            var vm = this;
             axios.post('/cats', this.form).then(function (response) {
-                console.log('RESPONSE', response);
+                vm.$emit('message', response.message);
+                _this.$router.push('/cats');
             }).catch(function (error) {
                 _this.error = error.response.data;
                 var firstError = Object.keys(_this.error)[0];
                 $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
+
+                window.setTimeout(function (_) {
+                    vm.inProgress = false;
+                }, 1000);
             });
         }
     }

@@ -343,14 +343,21 @@
 
         methods: {
             store() {
+                this.inProgress = true
+                let vm = this
                 axios.post('/cats', this.form)
                 .then(response => {
-                    console.log('RESPONSE', response)
+                    vm.$emit('message', response.message)
+                    this.$router.push('/cats')
                 })
                 .catch(error => {
                     this.error = error.response.data
                     let firstError = Object.keys(this.error)[0]
                     $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
+
+                    window.setTimeout(_ => {
+                        vm.inProgress = false
+                    }, 1000)
                 })
             }
         }
