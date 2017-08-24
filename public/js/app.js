@@ -3785,16 +3785,24 @@ var app = new __WEBPACK_IMPORTED_MODULE_1_vue___default.a({
 
     data: {
         currentRoute: window.location.pathname,
-        isAuthenticated: window.InitialAuthenticated
+        isAuthenticated: window.InitialAuthenticated,
+        message: ''
     },
 
     methods: {
         toggle: function toggle() {
             this.isAuthenticated = !this.isAuthenticated;
         },
-        onMessage: function onMessage(event) {
-            console.log('RECEIVED MESSAGE', event);
+        onMessage: function onMessage(message) {
+            this.message = message;
+        },
+        disposeMessage: function disposeMessage() {
+            this.message = '';
         }
+    },
+
+    mounted: function mounted() {
+        this.$on('onMessage', this.onMessage);
     }
 });
 
@@ -45546,7 +45554,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             this.inProgress = true;
             var vm = this;
             axios.post('/cats', this.form).then(function (response) {
-                vm.$emit('message', response.message);
+                vm.$router.app.$emit('onMessage', response.data.message);
                 _this.$router.push('/cats');
             }).catch(function (error) {
                 _this.error = error.response.data;

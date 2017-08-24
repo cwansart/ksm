@@ -12,14 +12,29 @@
     </head>
     <body>
         <div class="container-fluid" id="app" @onMessage="onMessage('TEST')">
+            <transition name="component-fade" mode="out-in">
+                <navigation @login="toggle" v-if="isAuthenticated"></navigation>
+            </transition>
+
+            <transition name="component-fade" mode="out-in">
+                <div class="alert alert-success" role="alert" v-if="message.length > 0">
+                    @{{ message }}
+                    
+                    <button type="button" class="close" aria-label="Close" @click="disposeMessage">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            </transition>
+
             <template v-if="isAuthenticated">
-                <navigation @login="toggle"></navigation>
                 <transition name="component-fade" mode="out-in">
-                    <router-view></router-view>
+                    <router-view ></router-view>
                 </transition>
             </template>
             <template v-else>
-                <login @login="toggle"></login>
+                <transition name="component-fade" mode="out-in">
+                    <login @login="toggle"></login>
+                </transition>
             </template>
         </div>
 

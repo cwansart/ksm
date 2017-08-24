@@ -347,7 +347,7 @@
                 let vm = this
                 axios.post('/cats', this.form)
                 .then(response => {
-                    vm.$emit('message', response.message)
+                    vm.$router.app.$emit('onMessage', response.data.message)
                     this.$router.push('/cats')
                 })
                 .catch(error => {

@@ -34,7 +34,8 @@ const app = new Vue({
 
     data: {
         currentRoute: window.location.pathname,
-        isAuthenticated: window.InitialAuthenticated
+        isAuthenticated: window.InitialAuthenticated,
+        message: ''
     },
 
     methods: {
@@ -42,8 +43,16 @@ const app = new Vue({
             this.isAuthenticated = !this.isAuthenticated
         },
 
-        onMessage(event) {
-            console.log('RECEIVED MESSAGE', event)
+        onMessage(message) {
+            this.message = message
+        },
+
+        disposeMessage() {
+            this.message = ''
         }
+    },
+
+    mounted() {
+        this.$on('onMessage', this.onMessage)
     }
 });
