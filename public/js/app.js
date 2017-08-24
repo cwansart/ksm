@@ -45058,6 +45058,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     props: ['cat'],
@@ -45065,7 +45070,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
     data: function data() {
         return {};
     },
-    mounted: function mounted() {}
+    mounted: function mounted() {
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+    }
 });
 
 /***/ }),
@@ -45081,7 +45090,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     staticClass: "media-list"
   }, [_c('li', {
     staticClass: "media"
-  }, [_c('div', {
+  }, [_vm._m(0), _vm._v(" "), _c('div', {
     staticClass: "media-left"
   }, [_c('a', {
     attrs: {
@@ -45097,7 +45106,23 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('h4', {
     staticClass: "media-heading"
   }, [_vm._v(_vm._s(_vm.cat.name))]), _vm._v(" "), _c('small', [_c('i', [_vm._v("Eingetragen am: " + _vm._s(_vm.cat.created_at))])]), _c('br'), _vm._v("\n                    " + _vm._s(_vm.cat.color) + "\n                ")])])])])])
-},staticRenderFns: []}
+},staticRenderFns: [function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
+  return _c('button', {
+    staticClass: "close",
+    attrs: {
+      "type": "button",
+      "aria-label": "Show",
+      "data-toggle": "tooltip",
+      "data-placement": "bottom",
+      "title": "alle Daten anzeigen"
+    }
+  }, [_c('span', {
+    staticClass: "glyphicon glyphicon-chevron-down",
+    attrs: {
+      "aria-hidden": "true"
+    }
+  })])
+}]}
 module.exports.render._withStripped = true
 if (false) {
   module.hot.accept()
