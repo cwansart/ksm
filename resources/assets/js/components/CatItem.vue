@@ -3,8 +3,8 @@
         <div class="panel-body">
             <ul class="media-list">
                 <li class="media">
-                    <button type="button" class="close" aria-label="Show" data-toggle="tooltip" data-placement="bottom" title="alle Daten anzeigen">
-                        <span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
+                    <button type="button" @click="toggle" class="close" aria-label="Show" data-toggle="tooltip" data-placement="bottom" title="alle Daten anzeigen">
+                        <span :class="{ 'rotate': open }" class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
                     </button>
 
                     <div class="media-left">
@@ -14,7 +14,7 @@
                     </div>
 
                     <div class="media-body">
-                        <h4 class="media-heading">{{ cat.name }}</h4>
+                        <h4 class="media-heading">{{ cat.key }} {{ cat.name }}</h4>
                         <small><i>Eingetragen am: {{ cat.created_at }}</i></small><br>
                         {{ cat.color }}
                     </div>
@@ -27,11 +27,19 @@
 <script>
     export default {
         props: [
-            'cat',
+            'cat'
         ],
 
-        data() {
-            return {}
+        data: function () {
+            return {
+                open: false
+            }
+        },
+
+        methods: {
+            toggle() {
+                this.open = !this.open
+            }
         },
 
         mounted() {
@@ -46,6 +54,16 @@
     .cat-pic {
         max-width: 64px;
         max-height: 64px;
+    }
+
+    .rotate {
+        transition: all 500ms;
+        transform: rotate(0deg);
+        animation: up-side-down 500ms forwards ease-in-out;
+    }
+
+    @keyframes up-side-down {
+        100% { transform: rotate(180deg); }
     }
 </style>
 

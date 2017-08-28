@@ -54,7 +54,7 @@ class CatController extends Controller
      */
     public function show(Cat $cat)
     {
-        //
+        return $cat;
     }
 
     /**
