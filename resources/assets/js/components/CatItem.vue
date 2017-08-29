@@ -3,8 +3,8 @@
         <div class="panel-body">
             <ul class="media-list">
                 <li class="media">
-                    <button type="button" @click="toggle" class="close" aria-label="Show" data-toggle="tooltip" data-placement="bottom" title="alle Daten anzeigen">
-                        <span :class="{ 'rotate': open }" class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
+                    <button type="button" @click="toggle" class=" close" aria-label="Show" data-toggle="tooltip" data-placement="bottom" title="alle Daten anzeigen">
+                        <span :class="{ 'rotated': open }" class="open-close-btn glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
                     </button>
 
                     <div class="media-left">
@@ -56,14 +56,12 @@
         max-height: 64px;
     }
 
-    .rotate {
-        transition: all 500ms;
-        transform: rotate(0deg);
-        animation: up-side-down 500ms forwards ease-in-out;
+    .open-close-btn {
+        transition: transform 500ms;
     }
 
-    @keyframes up-side-down {
-        100% { transform: rotate(180deg); }
+    .rotated {
+        transform: rotate(180deg);
     }
 </style>
 
