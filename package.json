@@ -20,6 +20,7 @@
     "vue-router": "^2.7.0"
   },
   "dependencies": {
-    "babel-polyfill": "^6.26.0"
+    "babel-polyfill": "^6.26.0",
+    "moment": "^2.18.1"
   }
 }
