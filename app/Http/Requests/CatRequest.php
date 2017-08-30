@@ -47,6 +47,8 @@ class CatRequest extends FormRequest
             'is_cat_friendly' => 'boolean',
             'is_dog_friendly' => 'boolean',
             'is_child_friendly' => 'boolean',
+
+            'image' => 'image64:jpeg,jpg,png'
         ];
     }
 }

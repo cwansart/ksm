@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Cat;
 use App\Http\Requests\CatRequest;
 use Illuminate\Http\Request;
@@ -42,6 +43,15 @@ class CatController extends Controller
      */
     public function store(CatRequest $request)
     {
+        // TODO:
+        //     from https://medium.com/@jagadeshanh/image-upload-and-validation-using-laravel-and-vuejs-e71e0f094fbb
+        //    Require image lib
+        //
+        //$imageData = $request->get('image');
+        //$fileName = Carbon::now()->timestamp . '_' . uniqid() . '.' . explode('/', explode(':', substr($imageData, 0, strpos($imageData, ';')))[1])[1];
+        //Image::make($request->get('image'))->save(public_path('images/').$fileName);
+        //dd($fileName);
+        //dd($request->except('image'));
         $cat = Cat::create($request->all());
         return ['message' => trans('messages.cat_saved'), 'cat_id' => $cat->id];
     }

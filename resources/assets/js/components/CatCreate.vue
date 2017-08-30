@@ -13,9 +13,10 @@
                     <div id="collapseOne" class="panel-collapse collapse in" role="tabpanel">
                     <div class="panel-body">
                         <div class="form-group">
-                            <div class="pull-right"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg=="></div>
+                            <div class="pull-right"><img class="img-responsive" id="cat-photo" :src="form.image"></div>
                             <label for="photo">Foto der Katze</label>
-                            <input type="file" id="photo">
+                            <input type="file" id="photo" @change="onFileChange">
+                            <p class="text-danger" role="alert" v-if="error.photo" v-text="error.photo"></p>
                         </div>
 
                         <div class="form-group">
@@ -300,6 +301,9 @@
                 error: {},
                 inProgress: false,
 
+                // default image when nothing was uploaded
+                imageChanged: false, // prevent the default image to be uploaded
+
                 // Forms data
                 form: {
                     name: '',
@@ -336,7 +340,8 @@
                     indoor: false,
                     cat_friendly: false,
                     dog_friendly: false,
-                    child_friendly: false
+                    child_friendly: false,
+                    image: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg=='
                 }
             }
         },
@@ -344,7 +349,19 @@
         methods: {
             store() {
                 this.inProgress = true
+                this.storeCat()
+                //this.storePhoto()
+            },
+
+            storeCat() {
                 let vm = this
+                let cat = this.form
+
+                // Delete default image if not changed from data
+                if (!this.imageChanged) {
+                    cat.image = ''
+                }
+
                 axios.post('/cats', this.form)
                 .then(response => {
                     vm.$router.app.$emit('onMessage', response.data.message)
@@ -352,14 +369,48 @@
                 })
                 .catch(error => {
                     this.error = error.response.data
+
                     let firstError = Object.keys(this.error)[0]
                     $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
 
-                    window.setTimeout(_ => {
-                        vm.inProgress = false
-                    }, 1000)
+                    vm.unlockForm()
                 })
+            },
+
+            onFileChange(event) {
+                this.imageChanged = true
+                let files = event.target.files || event.dataTransfer.files
+                if (!files.length) {
+                    return
+                }
+                this.createPhoto(files[0])
+            },
+
+            createPhoto(file) {
+                let reader = new FileReader()
+                let vm = this
+
+                reader.onload = e => {
+                    console.log('IMAGE SET')
+                    vm.form.image = e.target.result
+                }
+                reader.readAsDataURL(file)
+            },
+
+            unlockForm() {
+                let vm = this
+                window.setTimeout(_ => {
+                    vm.inProgress = false
+                }, 1000)
             }
         }
     }
 </script>
+
+<<style>
+#cat-photo {
+    max-width: 15em;
+    max-height: 15em;
+}
+</style>
+
