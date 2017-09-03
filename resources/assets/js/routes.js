@@ -6,7 +6,8 @@ let routes = [
         alias: '/cats',
         component: require('./components/CatIndex'),
         query: {
-            page: 1
+            page: 1,
+            hightlight: null,
         }
     },
     {

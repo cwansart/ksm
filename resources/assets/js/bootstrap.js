@@ -4,6 +4,8 @@ window._ = require('lodash');
 window.moment = require('moment')
 window.momentDateFormat = "DD.MM.YYYY"
 
+window.publicPhotosPath = '/images/'
+
 // fix IE Promises issue
 import 'babel-polyfill'
 

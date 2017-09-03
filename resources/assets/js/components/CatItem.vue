@@ -1,5 +1,9 @@
 <template>
-    <div class="panel panel-default">
+    <div class="panel panel-default" :class="{ 'panel-success': highlight }" :data-cat-id="cat.id">
+        <div class="panel-heading" v-if="highlight">
+            Neu
+        </div>
+
         <div class="panel-body">
             <ul class="media-list">
                 <li class="media">
@@ -9,9 +13,9 @@
 
                     <transition name="component-fade" mode="out-in">
                         <div v-if="!showDetails" key="101">
-                            <div class="media-left">
+                            <div class="media-left" v-if="photoSrc !== null">
                                 <a href="#">
-                                    <img class="media-object cat-pic" :src="cat.photo_path">
+                                    <img class="media-object cat-pic" :src="photoSrc">
                                 </a>
                             </div>
 
@@ -37,11 +41,13 @@
 
                             <transition name="component-fade" mode="out-in">
                                 <div id="basisdaten" v-if="activeTab == 'basisdaten'" key="1">
+                                    <!-- <cat-detail-edit-button cat-id="basisdaten" @edit="editData"></cat-detail-edit-button> -->
+
                                     <h2>Basisdaten</h2>
 
-                                    <div class="media-left">
+                                    <div class="media-left" v-if="photoSrc !== null">
                                         <a href="#">
-                                            <img class="media-object cat-pic" :src="cat.photo_path">
+                                            <img class="media-object cat-pic" :src="photoSrc">
                                         </a>
                                     </div>
 
@@ -50,6 +56,7 @@
                                     <cat-detail-row label="Farbe">{{ cat.color }}</cat-detail-row>
                                     <cat-detail-row label="Geburtsdatum">{{ moment(cat.date_of_birth).isValid() ? moment(cat.date_of_birth).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
                                     <cat-detail-row label="Geschlecht">{{ cat.is_male ? 'männlich' : 'weiblich' }}</cat-detail-row>
+
                                 </div>
 
                                 <div class="aufnahme-und-abgabe" v-if="activeTab == 'aufnahme-und-abgabe'" key="2">
@@ -127,26 +134,39 @@
             'cat'
         ],
 
+        data: function () {
+            return {
+                moment,
+                momentDateFormat,
+                showDetails: false,
+                activeTab: 'basisdaten',
+                highlight: false
+            }
+        },
+
         computed: {
             streetAndNr() {
                 let street = this.cat.street || ''
                 let house_number = this.cat.house_number || ''
                 let whitespace = (this.cat.street != null && this.cat.house_number != null) ? ' ' : ''
                 return street + whitespace + house_number
+            },
+
+            photoSrc() {
+                return this.cat.photo_path !== null ? window.publicPhotosPath + '/' + this.cat.photo_path : null
             }
         },
 
         components: {
             'cat-detail-row': require('./CatDetailRow'),
-            'cat-detail-tab': { template: '<div><slot></slot></div>' }
-        },
-
-        data: function () {
-            return {
-                moment,
-                momentDateFormat,
-                showDetails: false,
-                activeTab: 'basisdaten'
+            'cat-detail-tab': { template: '<div><slot></slot></div>' },
+            'cat-detail-edit-button': { 
+                props: [ 'cat-id' ],
+                template: `
+                    <button type="button" class="btn btn-default pull-right" aria-label="Edit" @click="$emit('edit', catId)">
+                        <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> Daten ändern
+                    </button>
+                `
             }
         },
 
@@ -157,6 +177,10 @@
 
             setActiveTab(tab) {
                 this.activeTab = tab
+            },
+
+            editData(data) {
+
             }
         },
 
@@ -165,6 +189,8 @@
             $(function () {
                 $('[data-toggle="tooltip"]').tooltip()
             })
+
+            this.highlight = this.$route.query.highlight == this.cat.id
         }
     }
 </script>

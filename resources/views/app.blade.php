@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="/css/app.css">
     </head>
     <body>
-        <div class="container-fluid" id="app" @onMessage="onMessage('TEST')">
+        <div class="container-fluid" id="app">
             <transition name="component-fade" mode="out-in">
                 <navigation @login="toggle" v-if="isAuthenticated"></navigation>
             </transition>

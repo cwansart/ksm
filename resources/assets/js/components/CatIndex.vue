@@ -54,7 +54,7 @@
         },
 
         watch: {
-            '$route.query': 'pageChanged'
+            '$route.query': 'queryChanged'
         },
 
         methods: {
@@ -71,7 +71,14 @@
                 })
             },
 
-            pageChanged({page}) {
+            queryChanged(query) {
+                console.log('Query Changed', query)
+                if (query.page !== undefined) {
+                    this.pageChanged(query.page)
+                }
+            },
+
+            pageChanged(page) {
                 this.loadData(page)
                 $("html, body").animate({ scrollTop: 0 }, 500);
             }

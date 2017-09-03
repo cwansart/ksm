@@ -359,13 +359,14 @@
 
                 // Delete default image if not changed from data
                 if (!this.imageChanged) {
-                    cat.image = ''
+                    delete cat.image
                 }
 
                 axios.post('/cats', this.form)
                 .then(response => {
+                    console.log('onMessage: ', response.data)
                     vm.$router.app.$emit('onMessage', response.data.message)
-                    this.$router.push('/cats')
+                    this.$router.push({ path: '/cats', query: { highlight: response.data.cat_id }})
                 })
                 .catch(error => {
                     this.error = error.response.data
@@ -391,7 +392,6 @@
                 let vm = this
 
                 reader.onload = e => {
-                    console.log('IMAGE SET')
                     vm.form.image = e.target.result
                 }
                 reader.readAsDataURL(file)

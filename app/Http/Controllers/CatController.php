@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use App\Cat;
 use App\Http\Requests\CatRequest;
 use Illuminate\Http\Request;
+use Intervention\Image\ImageManagerStatic as Image;
 
 class CatController extends Controller
 {
@@ -43,16 +44,15 @@ class CatController extends Controller
      */
     public function store(CatRequest $request)
     {
-        // TODO:
-        //     from https://medium.com/@jagadeshanh/image-upload-and-validation-using-laravel-and-vuejs-e71e0f094fbb
-        //    Require image lib
-        //
-        //$imageData = $request->get('image');
-        //$fileName = Carbon::now()->timestamp . '_' . uniqid() . '.' . explode('/', explode(':', substr($imageData, 0, strpos($imageData, ';')))[1])[1];
-        //Image::make($request->get('image'))->save(public_path('images/').$fileName);
-        //dd($fileName);
-        //dd($request->except('image'));
-        $cat = Cat::create($request->all());
+        $formData = $request->except('image');
+
+        if (($imageData = $request->get('image')) !== null) {
+            $fileName = Carbon::now()->timestamp . '_' . uniqid() . '.' . explode('/', explode(':', substr($imageData, 0, strpos($imageData, ';')))[1])[1];
+            Image::make($imageData)->save(public_path('images/') . $fileName);
+            $formData['photo_path'] = $fileName;
+        }
+            
+        $cat = Cat::create($formData);
         return ['message' => trans('messages.cat_saved'), 'cat_id' => $cat->id];
     }
 
