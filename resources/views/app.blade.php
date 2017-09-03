@@ -50,6 +50,8 @@
         <script>
             window.InitialAuthenticated = {{ Auth::check() ? 'true' : 'false' }}
         </script>
+        <script src="/js/manifest.js"></script>
+        <script src="/js/vendor.js"></script>
         <script src="/js/app.js"></script>
     </body>
 </html>
