@@ -22,6 +22,7 @@ class CatController extends Controller
      */
     public function index()
     {
+        //return Cat::all();
         //return response('', 404);
         return Cat::paginate();
     }

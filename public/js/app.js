@@ -62824,56 +62824,52 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     data: function data() {
         return {
             error: {},
             inProgress: false,
+            loading: true,
+            loadingError: null,
 
             // default image when nothing was uploaded
             imageChanged: false, // prevent the default image to be uploaded
 
             // Forms data
-            form: {
-                name: '',
-                breed: '',
-                color: '',
-                date_of_birth: '',
-                is_male: 1,
-
-                entry_date: '',
-                leave_date: '',
-
-                location: '',
-                street: '',
-                country: '',
-
-                is_castrated: false,
-                castration_date: '',
-
-                first_vaccination: '',
-                second_vaccination: '',
-                next_vaccination: '',
-
-                tattoo_left: '',
-                tattoo_right: '',
-                chip: '',
-
-                distinguishing_marks: '',
-                comments: '',
-
-                deceased: false,
-                cause_of_death: '',
-
-                outdoor: false,
-                indoor: false,
-                cat_friendly: false,
-                dog_friendly: false,
-                child_friendly: false,
-                image: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg=='
-            }
+            form: null
         };
+    },
+    created: function created() {
+        var _this = this;
+
+        var id = parseInt(this.$route.param.id || 1);
+        axios.get('/cats/' + id).then(function (response) {
+            if (response.data.photo_path !== null) {
+                _this.form.image = window.publicPhotosPath + '/' + response.data.photo_path;
+            } else {
+                _this.form.image = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg==';
+            }
+
+            _this.form = response.data;
+        }).then(function (error) {
+            loadingError = error.message;
+        });
     },
 
 
@@ -62884,7 +62880,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             //this.storePhoto()
         },
         storeCat: function storeCat() {
-            var _this = this;
+            var _this2 = this;
 
             var vm = this;
             var cat = this.form;
@@ -62897,11 +62893,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             axios.post('/cats', this.form).then(function (response) {
                 console.log('onMessage: ', response.data);
                 vm.$router.app.$emit('onMessage', response.data.message);
-                _this.$router.push({ path: '/cats', query: { highlight: response.data.cat_id } });
+                _this2.$router.push({ path: '/cats', query: { highlight: response.data.cat_id } });
             }).catch(function (error) {
-                _this.error = error.response.data;
+                _this2.error = error.response.data;
 
-                var firstError = Object.keys(_this.error)[0];
+                var firstError = Object.keys(_this2.error)[0];
                 $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
 
                 vm.unlockForm();
@@ -62940,7 +62936,25 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
   return _c('div', {
     staticClass: "row"
+  }, [_c('transition', {
+    attrs: {
+      "name": "component-fade",
+      "mode": "out-in"
+    }
+  }, [(_vm.loading) ? _c('div', {
+    staticClass: "col-md-8 col-md-offset-2"
   }, [_c('div', {
+    staticClass: "panel panel-default"
+  }, [(_vm.loadingError == null) ? _c('div', {
+    staticClass: "panel-body"
+  }, [_vm._v("\n                        Daten werden geladen.\n                    ")]) : _c('div', {
+    staticClass: "panel-body"
+  }, [_vm._v("\n                        " + _vm._s(_vm.loadingError) + "\n                    ")])])]) : _vm._e()]), _vm._v(" "), _c('transition', {
+    attrs: {
+      "name": "component-fade",
+      "mode": "out-in"
+    }
+  }, [(_vm.loading) ? _c('div', {
     staticClass: "col-md-8 col-md-offset-2"
   }, [_c('form', {
     on: {
@@ -62957,7 +62971,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   }, [_c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(0), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseOne"
+    }
+  }, [_vm._v("\n                            Basisdaten\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse in",
     attrs: {
       "id": "collapseOne",
@@ -63162,7 +63187,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.is_male = "1"
       }
     }
-  }), _vm._v("\n                            männlich\n                        ")]), _vm._v(" "), _c('label', {
+  }), _vm._v("\n                                männlich\n                            ")]), _vm._v(" "), _c('label', {
     staticClass: "radio-inline"
   }, [_c('input', {
     directives: [{
@@ -63185,7 +63210,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.is_male = "0"
       }
     }
-  }), _vm._v("\n                            weiblich\n                        ")]), _c('br'), _vm._v(" "), (_vm.error.is_male) ? _c('p', {
+  }), _vm._v("\n                                weiblich\n                            ")]), _c('br'), _vm._v(" "), (_vm.error.is_male) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
@@ -63195,7 +63220,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(1), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseTwo"
+    }
+  }, [_vm._v("\n                            Aufnahme und Abgabe\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseTwo",
@@ -63285,7 +63321,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(2), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseThree"
+    }
+  }, [_vm._v("\n                        Aufenthaltsort\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseThree",
@@ -63411,7 +63458,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   })])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(3), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseFour"
+    }
+  }, [_vm._v("\n                            Kastration\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseFour",
@@ -63515,7 +63573,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   }) : _vm._e()]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(4), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseFive"
+    }
+  }, [_vm._v("\n                            Impfungen\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseFive",
@@ -63645,7 +63714,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(5), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseSix"
+    }
+  }, [_vm._v("\n                            Tätowierung\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseSix",
@@ -63777,7 +63857,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(6), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseSeven"
+    }
+  }, [_vm._v("\n                            Kommentare und Merkmale\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseSeven",
@@ -63843,7 +63934,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   })])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(7), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseEight"
+    }
+  }, [_vm._v("\n                            Todesfall\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseEight",
@@ -63936,7 +64038,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }
   })]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
-  }, [_vm._m(8), _vm._v(" "), _c('div', {
+  }, [_c('div', {
+    staticClass: "panel-heading",
+    attrs: {
+      "role": "tab"
+    }
+  }, [_c('a', {
+    attrs: {
+      "role": "button",
+      "data-toggle": "collapse",
+      "href": "#collapseNine"
+    }
+  }, [_vm._v("\n                            Eigenschaften\n                        ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseNine",
@@ -64195,125 +64308,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "type": "submit",
       "disabled": _vm.inProgress
     }
-  }, [_vm._v("speichern")])])])])
-},staticRenderFns: [function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseOne"
-    }
-  }, [_vm._v("\n                        Basisdaten\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseTwo"
-    }
-  }, [_vm._v("\n                        Aufnahme und Abgabe\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseThree"
-    }
-  }, [_vm._v("\n                       Aufenthaltsort\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseFour"
-    }
-  }, [_vm._v("\n                        Kastration\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseFive"
-    }
-  }, [_vm._v("\n                        Impfungen\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseSix"
-    }
-  }, [_vm._v("\n                        Tätowierung\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseSeven"
-    }
-  }, [_vm._v("\n                        Kommentare und Merkmale\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseEight"
-    }
-  }, [_vm._v("\n                        Todesfall\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseNine"
-    }
-  }, [_vm._v("\n                        Eigenschaften\n                    ")])])
-}]}
+  }, [_vm._v("speichern")])])]) : _vm._e()])], 1)
+},staticRenderFns: []}
 module.exports.render._withStripped = true
 if (false) {
   module.hot.accept()
