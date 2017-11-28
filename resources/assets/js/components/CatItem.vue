@@ -11,6 +11,11 @@
                         <span :class="{ 'rotated': showDetails }" class="open-close-btn glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
                     </button>
 
+                    <!-- <a href="" class="close" data-toggle="tooltip" data-placement="bottom" title="Daten bearbeiten"> -->
+                    <router-link :to="{ name: 'catEdit', params: { catId: cat.id }}" class="close rm1">
+                        <span class="open-close-btn glyphicon glyphicon-edit" aria-hidden="true"></span>
+                    </router-link>
+
                     <transition name="component-fade" mode="out-in">
                         <div v-if="!showDetails" key="101">
                             <div class="media-left" v-if="photoSrc !== null">
@@ -207,6 +212,10 @@
 
     .rotated {
         transform: rotate(180deg);
+    }
+
+    .rm1 {
+        margin-right: 0.4em;
     }
 </style>
 

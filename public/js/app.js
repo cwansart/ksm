@@ -59409,7 +59409,8 @@ var routes = [{
     path: '/cats/create',
     component: __webpack_require__(503)
 }, {
-    path: '/cats/:id/edit',
+    name: 'catEdit',
+    path: '/cats/:catId/edit',
     component: __webpack_require__(508)
 }];
 
@@ -59660,7 +59661,7 @@ exports = module.exports = __webpack_require__(52)(undefined);
 
 
 // module
-exports.push([module.i, "\n.cat-pic {\n    max-width: 64px;\n    max-height: 64px;\n}\n.open-close-btn {\n    transition: transform 500ms;\n}\n.rotated {\n    transform: rotate(180deg);\n}\n", ""]);
+exports.push([module.i, "\n.cat-pic {\n    max-width: 64px;\n    max-height: 64px;\n}\n.open-close-btn {\n    transition: transform 500ms;\n}\n.rotated {\n    transform: rotate(180deg);\n}\n.rm1 {\n    margin-right: 0.4em;\n}\n", ""]);
 
 // exports
 
@@ -59671,6 +59672,11 @@ exports.push([module.i, "\n.cat-pic {\n    max-width: 64px;\n    max-height: 64p
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
+//
+//
+//
+//
+//
 //
 //
 //
@@ -59975,6 +59981,21 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     class: {
       'rotated': _vm.showDetails
     },
+    attrs: {
+      "aria-hidden": "true"
+    }
+  })]), _vm._v(" "), _c('router-link', {
+    staticClass: "close rm1",
+    attrs: {
+      "to": {
+        name: 'catEdit',
+        params: {
+          catId: _vm.cat.id
+        }
+      }
+    }
+  }, [_c('span', {
+    staticClass: "open-close-btn glyphicon glyphicon-edit",
     attrs: {
       "aria-hidden": "true"
     }
