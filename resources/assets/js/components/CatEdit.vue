@@ -35,23 +35,23 @@
 
                             <div class="form-group">
                                 <label for="name">Name</label>
-                                <input type="text" v-model="form.name" name="name" class="form-control" placeholder="Name" :disabled="inProgress" >
+                                <input type="text" v-model="form.name" name="name" id="name" class="form-control" placeholder="Name" :disabled="inProgress" >
                             </div>
 
                             <div class="form-group">
                                 <label for="breed">Rasse</label>
-                                <input type="text" v-model="form.breed" name="breed" class="form-control" placeholder="Rasse" :disabled="inProgress" >
+                                <input type="text" v-model="form.breed" name="breed" id="breed" class="form-control" placeholder="Rasse" :disabled="inProgress" >
                             </div>
 
                             <div class="form-group" :class="{ 'has-error': error.color }">
                                 <label for="color">Farbe*</label>
-                                <input type="text" v-model="form.color" name="color" class="form-control" placeholder="Farbe" :disabled="inProgress" required>
+                                <input type="text" v-model="form.color" name="color" id="color" class="form-control" placeholder="Farbe" :disabled="inProgress" required>
                                 <p class="text-danger" role="alert" v-if="error.color" v-text="error.color[0]"></p>
                             </div>
 
                             <div class="form-group" :class="{ 'has-error': error.date_of_birth }">
                                 <label for="date_of_birth">Geburtstdatum</label>
-                                <input type="date" v-model="form.date_of_birth" name="date_of_birth" class="form-control" placeholder="Geburtstdatum" :disabled="inProgress">
+                                <input type="date" v-model="form.date_of_birth" name="date_of_birth" id="date_of_birth" class="form-control" placeholder="Geburtstdatum" :disabled="inProgress">
                                 <p class="text-danger" role="alert" v-if="error.date_of_birth" v-text="error.date_of_birth[0]"></p>
                             </div>
 
@@ -81,13 +81,13 @@
                         <div class="panel-body">
                             <div class="form-group" :class="{ 'has-error': error.registration_date }">
                                 <label for="entry_date">Aufnahmedatum</label>
-                                <input type="date" v-model="form.registration_date" name="entry_date" class="form-control" placeholder="Aufnahmedatum" :disabled="inProgress">
+                                <input type="date" v-model="form.registration_date" name="entry_date" id="entry_date" class="form-control" placeholder="Aufnahmedatum" :disabled="inProgress">
                                 <p class="text-danger" role="alert" v-if="error.registration_date" v-text="error.registration_date[0]"></p>
                             </div>
 
                             <div class="form-group" :class="{ 'has-error': error.leave_date }">
                                 <label for="leave_date">Abgabedatum</label>
-                                <input type="date" v-model="form.leave_date" name="leave_date" class="form-control" placeholder="Abgabedatum" :disabled="inProgress">
+                                <input type="date" v-model="form.leave_date" name="leave_date" id="leave_date" class="form-control" placeholder="Abgabedatum" :disabled="inProgress">
                                 <p class="text-danger" role="alert" v-if="error.leave_date" v-text="error.leave_date[0]"></p>
                             </div>
                         </div>
@@ -105,22 +105,22 @@
                         <div class="panel-body">
                             <div class="form-group">
                                 <label for="location">Ortsname</label>
-                                <input type="text" v-model="form.location" name="location" class="form-control" placeholder="Ort, z. B. Fam. Müller" :disabled="inProgress">
+                                <input type="text" v-model="form.location" name="location" id="location" class="form-control" placeholder="Ort, z. B. Fam. Müller" :disabled="inProgress">
                             </div>
 
                             <div class="form-group">
                                 <label for="street">Straße und Hausnummer</label>
-                                <input type="text" v-model="form.street" name="street" class="form-control" placeholder="z. B. Musterstr. 42" :disabled="inProgress">
+                                <input type="text" v-model="form.street" name="street" id="street" class="form-control" placeholder="z. B. Musterstr. 42" :disabled="inProgress">
                             </div>
 
                             <div class="form-group">
                                 <label for="city">PLZ und Ort</label>
-                                <input type="text" v-model="form.city" name="city" class="form-control" placeholder="z. B. 49074 Osnabrück" :disabled="inProgress">
+                                <input type="text" v-model="form.city" name="city" id="city" class="form-control" placeholder="z. B. 49074 Osnabrück" :disabled="inProgress">
                             </div>
 
                             <div class="form-group">
                                 <label for="country">Land</label>
-                                <input type="text" v-model="form.country" name="country" class="form-control" placeholder="z. B. Deutschland" :disabled="inProgress">
+                                <input type="text" v-model="form.country" name="country" id="country" class="form-control" placeholder="z. B. Deutschland" :disabled="inProgress">
                             </div>
                         </div>
                         </div>
@@ -137,14 +137,14 @@
                         <div class="panel-body">
                             <div class="form-group" :class="{ 'has-error': error.is_castrated }">
                                 <label for="is_castrated">Ist die Katze kastriert?</label>
-                                <input type="checkbox" name="is_castrated" v-model="form.is_castrated"><br>
+                                <input type="checkbox" name="is_castrated" id="is_castrated" v-model="form.is_castrated"><br>
                                 <p class="text-danger" role="alert" v-if="error.is_castrated" v-text="error.is_castrated[0]"></p>
                             </div>
 
                             <transition name="component-fade" mode="out-in">
                                 <div class="form-group" v-if="form.is_castrated" :class="{ 'has-error': error.castration_date }">
                                     <label for="castration_date">Kastrationsdatum</label>
-                                    <input type="date" v-model="form.castration_date" name="castration_date" class="form-control" placeholder="Kastrationsdatum" :disabled="inProgress">
+                                    <input type="date" v-model="form.castration_date" name="castration_date" id="castration_date" class="form-control" placeholder="Kastrationsdatum" :disabled="inProgress">
                                     <p class="text-danger" role="alert" v-if="error.castration_date" v-text="error.castration_date[0]"></p>
                                 </div>
                             </transition>
@@ -163,13 +163,13 @@
                         <div class="panel-body">
                             <div class="form-group" :class="{ 'has-error': error.first_vaccination }">
                                 <label for="first_vaccination">Erste Impfung</label>
-                                <input type="date" v-model="form.first_vaccination" name="first_vaccination" class="form-control" placeholder="Erste Impfung" :disabled="inProgress">
+                                <input type="date" v-model="form.first_vaccination" name="first_vaccination" id="first_vaccination" class="form-control" placeholder="Erste Impfung" :disabled="inProgress">
                                 <p class="text-danger" role="alert" v-if="error.first_vaccination" v-text="error.first_vaccination[0]"></p>
                             </div>
 
                             <div class="form-group" :class="{ 'has-error': error.second_vaccination }">
                                 <label for="second_vaccination">Zweite Impfung</label>
-                                <input type="date" v-model="form.second_vaccination" name="second_vaccination" class="form-control" placeholder="Zweite Impfung" :disabled="inProgress">
+                                <input type="date" v-model="form.second_vaccination" name="second_vaccination" id="second_vaccination" class="form-control" placeholder="Zweite Impfung" :disabled="inProgress">
                                 <p class="text-danger" role="alert" v-if="error.second_vaccination" v-text="error.second_vaccination[0]"></p>
                             </div>
 
@@ -193,19 +193,19 @@
                         <div class="panel-body">
                             <div class="form-group" :class="{ 'has-error': error.tattoo_left }">
                                 <label for="tattoo_left">Tätowierung links</label>
-                                <input type="text" v-model="form.tattoo_left" name="tattoo_left" placeholder="Tätowierung links" class="form-control" maxlength="5" :disabled="inProgress">
+                                <input type="text" v-model="form.tattoo_left" name="tattoo_left" id="tattoo_left" placeholder="Tätowierung links" class="form-control" maxlength="5" :disabled="inProgress">
                                 <p class="text-danger" role="alert" v-if="error.tattoo_left" v-text="error.tattoo_left[0]"></p>
                             </div>
 
                             <div class="form-group" :class="{ 'has-error': error.tattoo_right }">
                                 <label for="tattoo_right">Tätowierung rechts</label>
-                                <input type="text" v-model="form.tattoo_right" name="tattoo_right" placeholder="Tätowierung links" class="form-control" maxlength="5" :disabled="inProgress">
+                                <input type="text" v-model="form.tattoo_right" name="tattoo_right" id="tattoo_right" placeholder="Tätowierung links" class="form-control" maxlength="5" :disabled="inProgress">
                                 <p class="text-danger" role="alert" v-if="error.tattoo_right" v-text="error.tattoo_right[0]"></p>
                             </div>
 
                             <div class="form-group" :class="{ 'has-error': error.chip }">
                                 <label for="chip">Chip</label>
-                                <input type="text" v-model="form.chip" name="chip" placeholder="Chipnummer" class="form-control" :disabled="inProgress">
+                                <input type="text" v-model="form.chip" name="chip" id="chip" placeholder="Chipnummer" class="form-control" :disabled="inProgress">
                                 <p class="text-danger" role="alert" v-if="error.chip" v-text="error.chip[0]"></p>
                             </div>
                         </div>
@@ -223,12 +223,12 @@
                         <div class="panel-body">
                             <div class="form-group">
                                 <label for="distinguishing_marks">Merkmale</label>
-                                <textarea class="form-control" rows="3" v-model="form.distinguishing_marks" :disabled="inProgress" placeholder="Merkmale, z. B. Knick im Schwanz"></textarea>
+                                <textarea id="distinguishing_marks" class="form-control" rows="3" v-model="form.distinguishing_marks" :disabled="inProgress" placeholder="Merkmale, z. B. Knick im Schwanz"></textarea>
                             </div>
 
                             <div class="form-group">
                                 <label for="comments">Kommentare</label>
-                                <textarea class="form-control" rows="3" v-model="form.comments" :disabled="inProgress" placeholder="Kommentare, z. B. Übergabe an Gabi"></textarea>
+                                <textarea id="comments" class="form-control" rows="3" v-model="form.comments" :disabled="inProgress" placeholder="Kommentare, z. B. Übergabe an Gabi"></textarea>
                             </div>
                         </div>
                         </div>
@@ -245,7 +245,7 @@
                         <div class="panel-body">
                             <div class="form-group" :class="{ 'has-error': error.deceased }">
                                 <label for="deceased">Ist die Katze verstorben?</label>
-                                <input type="checkbox" name="deceased" v-model="form.deceased"><br>
+                                <input type="checkbox" name="deceased" id="deceased" v-model="form.deceased"><br>
                                 <p class="text-danger" role="alert" v-if="error.chip" v-text="error.chip[0]"></p>
                             </div>
 
@@ -270,31 +270,31 @@
                         <div class="panel-body">
                             <div class="form-group" :class="{ 'has-error': error.is_outdoor_cat }">
                                 <label for="outdoor">Außenkatze?</label>
-                                <input type="checkbox" name="outdoor" v-model="form.is_outdoor_cat"><br>
+                                <input type="checkbox" name="outdoor" id="outdoor" v-model="form.is_outdoor_cat"><br>
                                 <p class="text-danger" role="alert" v-if="error.is_outdoor_cat" v-text="error.is_outdoor_cat[0]"></p>
                             </div>
 
                             <div class="form-group" :class="{ 'has-error': error.is_indoor_cat }">
                                 <label for="indoor">Innenkatze?</label>
-                                <input type="checkbox" name="indoor" v-model="form.is_indoor_cat"><br>
+                                <input type="checkbox" name="indoor" id="indoor" v-model="form.is_indoor_cat"><br>
                                 <p class="text-danger" role="alert" v-if="error.is_indoor_cat" v-text="error.is_indoor_cat[0]"></p>
                             </div>
 
                             <div class="form-group" :class="{ 'has-error': error.is_cat_friendly }">
                                 <label for="cat_friendly">Katzenfreundlich?</label>
-                                <input type="checkbox" name="cat_friendly" v-model="form.is_cat_friendly"><br>
+                                <input type="checkbox" name="cat_friendly" id="cat_friendly" v-model="form.is_cat_friendly"><br>
                                 <p class="text-danger" role="alert" v-if="error.is_cat_friendly" v-text="error.is_cat_friendly[0]"></p>
                             </div>
                             
                             <div class="form-group" :class="{ 'has-error': error.is_dog_friendly }">
                                 <label for="dog_friendly">Hundefreundlich?</label>
-                                <input type="checkbox" name="dog_friendly" v-model="form.is_dog_friendly"><br>
+                                <input type="checkbox" name="dog_friendly" id="dog_friendly" v-model="form.is_dog_friendly"><br>
                                 <p class="text-danger" role="alert" v-if="error.is_dog_friendly" v-text="error.is_dog_friendly[0]"></p>
                             </div>
                             
                             <div class="form-group" :class="{ 'has-error': error.is_child_friendly }">
                                 <label for="child_friendly">Kinderfreundlich?</label>
-                                <input type="checkbox" name="child_friendly" v-model="form.is_child_friendly"><br>
+                                <input type="checkbox" name="child_friendly" id="child_friendly" v-model="form.is_child_friendly"><br>
                                 <p class="text-danger" role="alert" v-if="error.is_child_friendly" v-text="error.is_child_friendly[0]"></p>
                             </div>
                         </div>
