@@ -39,9 +39,6 @@ class CatController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
      */
     public function store(CatRequest $request)
     {
@@ -59,9 +56,6 @@ class CatController extends Controller
 
     /**
      * Display the specified resource.
-     *
-     * @param  \App\Cat  $cat
-     * @return \Illuminate\Http\Response
      */
     public function show(Cat $cat)
     {
@@ -69,36 +63,36 @@ class CatController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Cat  $cat
-     * @return \Illuminate\Http\Response
+     * Should not be invoked directly.
      */
     public function edit(Cat $cat)
     {
-        //
+        abort(404);
     }
 
     /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Cat  $cat
-     * @return \Illuminate\Http\Response
+     * Updates the given cat.
      */
-    public function update(Request $request, Cat $cat)
+    public function update(CatRequest $request)
     {
-        //
+        $cat = Cat::findOrFail($request->get('id'));
+        $formData = $request->except('image');
+
+        if (($imageData = $request->get('image')) !== null) {
+            $fileName = Carbon::now()->timestamp . '_' . uniqid() . '.' . explode('/', explode(':', substr($imageData, 0, strpos($imageData, ';')))[1])[1];
+            Image::make($imageData)->save(public_path('images/') . $fileName);
+            $formData['photo_path'] = $fileName;
+        }
+
+        $cat->update($formData);
+        return ['message' => trans('messages.cat_updated'), 'cat_id' => $cat->id];
     }
 
     /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Cat  $cat
-     * @return \Illuminate\Http\Response
+     * @Todo: Implemened destroy method.
      */
     public function destroy(Cat $cat)
     {
-        //
+        abort(501); // Not implemented yet
     }
 }

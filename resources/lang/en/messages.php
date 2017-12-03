@@ -1,5 +1,6 @@
 <?php
 
 return [
-    'cat_saved' => 'Cat has been saved.'
+    'cat_saved' => 'Cat has been saved.',
+    'cat_updated' => 'Cat has been updated.'
 ];

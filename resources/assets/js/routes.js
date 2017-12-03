@@ -16,7 +16,7 @@ let routes = [
     },
     {
         name: 'catEdit',
-        path: '/cats/:catId/edit',
+        path: '/cats/:id/edit',
         component: require('./components/CatEdit')
     }
 ]

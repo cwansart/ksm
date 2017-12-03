@@ -12,7 +12,7 @@
                     </button>
 
                     <!-- <a href="" class="close" data-toggle="tooltip" data-placement="bottom" title="Daten bearbeiten"> -->
-                    <router-link :to="{ name: 'catEdit', params: { catId: cat.id }}" class="close rm1">
+                    <router-link :to="{ name: 'catEdit', params: { id: cat.id }}" class="close rm1">
                         <span class="open-close-btn glyphicon glyphicon-edit" aria-hidden="true"></span>
                     </router-link>
 
@@ -46,8 +46,6 @@
 
                             <transition name="component-fade" mode="out-in">
                                 <div id="basisdaten" v-if="activeTab == 'basisdaten'" key="1">
-                                    <!-- <cat-detail-edit-button cat-id="basisdaten" @edit="editData"></cat-detail-edit-button> -->
-
                                     <h2>Basisdaten</h2>
 
                                     <div class="media-left" v-if="photoSrc !== null">
@@ -164,15 +162,7 @@
 
         components: {
             'cat-detail-row': require('./CatDetailRow'),
-            'cat-detail-tab': { template: '<div><slot></slot></div>' },
-            'cat-detail-edit-button': { 
-                props: [ 'cat-id' ],
-                template: `
-                    <button type="button" class="btn btn-default pull-right" aria-label="Edit" @click="$emit('edit', catId)">
-                        <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> Daten ändern
-                    </button>
-                `
-            }
+            'cat-detail-tab': { template: '<div><slot></slot></div>' }
         },
 
         methods: {

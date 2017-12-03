@@ -59410,7 +59410,7 @@ var routes = [{
     component: __webpack_require__(503)
 }, {
     name: 'catEdit',
-    path: '/cats/:catId/edit',
+    path: '/cats/:id/edit',
     component: __webpack_require__(508)
 }];
 
@@ -59805,8 +59805,6 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
-//
-//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     props: ['cat'],
@@ -59835,11 +59833,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
     components: {
         'cat-detail-row': __webpack_require__(495),
-        'cat-detail-tab': { template: '<div><slot></slot></div>' },
-        'cat-detail-edit-button': {
-            props: ['cat-id'],
-            template: '\n                <button type="button" class="btn btn-default pull-right" aria-label="Edit" @click="$emit(\'edit\', catId)">\n                    <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> Daten \xE4ndern\n                </button>\n            '
-        }
+        'cat-detail-tab': { template: '<div><slot></slot></div>' }
     },
 
     methods: {
@@ -59990,7 +59984,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "to": {
         name: 'catEdit',
         params: {
-          catId: _vm.cat.id
+          id: _vm.cat.id
         }
       }
     }
@@ -62864,7 +62858,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony default export */ __webpack_exports__["default"] = ({
     data: function data() {
         return {
-            error: {},
+            error: { errors: {}, message: undefined },
             inProgress: false,
             loading: true,
             loadingError: null,
@@ -62873,23 +62867,62 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             imageChanged: false, // prevent the default image to be uploaded
 
             // Forms data
-            form: null
+            form: {
+                name: '',
+                breed: '',
+                color: '',
+                date_of_birth: '',
+                is_male: 1,
+
+                entry_date: '',
+                leave_date: '',
+
+                location: '',
+                street: '',
+                country: '',
+
+                is_castrated: false,
+                castration_date: '',
+
+                first_vaccination: '',
+                second_vaccination: '',
+                next_vaccination: '',
+
+                tattoo_left: '',
+                tattoo_right: '',
+                chip: '',
+
+                distinguishing_marks: '',
+                comments: '',
+
+                deceased: false,
+                cause_of_death: '',
+
+                outdoor: false,
+                indoor: false,
+                cat_friendly: false,
+                dog_friendly: false,
+                child_friendly: false
+            }
         };
     },
     created: function created() {
         var _this = this;
 
-        var id = parseInt(this.$route.param.id || 1);
+        var id = parseInt(this.$route.params.id || '1');
         axios.get('/cats/' + id).then(function (response) {
+            _this.form = response.data;
+
             if (response.data.photo_path !== null) {
                 _this.form.image = window.publicPhotosPath + '/' + response.data.photo_path;
+                delete _this.form.photo_path;
             } else {
                 _this.form.image = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg==';
             }
-
-            _this.form = response.data;
-        }).then(function (error) {
-            loadingError = error.message;
+            _this.loading = false;
+        }).catch(function (error) {
+            _this.loadingError = 'Beim Laden der Daten ist ein Fehler aufgetreten. Möglicherweise existiert der gewünschte Eintrag nicht mehr.';
+            console.error('Error while loading data:', error);
         });
     },
 
@@ -62897,10 +62930,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
     methods: {
         store: function store() {
             this.inProgress = true;
-            this.storeCat();
-            //this.storePhoto()
+            this.updateCat();
         },
-        storeCat: function storeCat() {
+        updateCat: function updateCat() {
             var _this2 = this;
 
             var vm = this;
@@ -62911,14 +62943,15 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
                 delete cat.image;
             }
 
-            axios.post('/cats', this.form).then(function (response) {
+            axios.put('/cats/' + this.id, this.form).then(function (response) {
                 console.log('onMessage: ', response.data);
                 vm.$router.app.$emit('onMessage', response.data.message);
                 _this2.$router.push({ path: '/cats', query: { highlight: response.data.cat_id } });
             }).catch(function (error) {
                 _this2.error = error.response.data;
+                console.log('THIS ERROR', _this2.error);
 
-                var firstError = Object.keys(_this2.error)[0];
+                var firstError = Object.keys(_this2.error.errors)[0];
                 $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
 
                 vm.unlockForm();
@@ -62968,14 +63001,14 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     staticClass: "panel panel-default"
   }, [(_vm.loadingError == null) ? _c('div', {
     staticClass: "panel-body"
-  }, [_vm._v("\n                        Daten werden geladen.\n                    ")]) : _c('div', {
-    staticClass: "panel-body"
-  }, [_vm._v("\n                        " + _vm._s(_vm.loadingError) + "\n                    ")])])]) : _vm._e()]), _vm._v(" "), _c('transition', {
+  }, [_vm._v("\n                    Daten werden geladen.\n                ")]) : _c('div', {
+    staticClass: "panel-body bg-danger"
+  }, [_vm._v("\n                    " + _vm._s(_vm.loadingError) + "\n                ")])])]) : _vm._e()]), _vm._v(" "), _c('transition', {
     attrs: {
       "name": "component-fade",
       "mode": "out-in"
     }
-  }, [(_vm.loading) ? _c('div', {
+  }, [(!_vm.loading) ? _c('div', {
     staticClass: "col-md-8 col-md-offset-2"
   }, [_c('form', {
     on: {
@@ -63003,7 +63036,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseOne"
     }
-  }, [_vm._v("\n                            Basisdaten\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Basisdaten\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse in",
     attrs: {
       "id": "collapseOne",
@@ -63058,6 +63091,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "name",
+      "id": "name",
       "placeholder": "Name",
       "disabled": _vm.inProgress
     },
@@ -63087,6 +63121,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "breed",
+      "id": "breed",
       "placeholder": "Rasse",
       "disabled": _vm.inProgress
     },
@@ -63102,7 +63137,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   })]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.color
+      'has-error': ('color' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63119,6 +63154,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "color",
+      "id": "color",
       "placeholder": "Farbe",
       "disabled": _vm.inProgress,
       "required": ""
@@ -63132,18 +63168,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.color = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.color) ? _c('p', {
+  }), _vm._v(" "), (('color' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.color[0])
+      "textContent": _vm._s(_vm.error.errors.color[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.date_of_birth
+      'has-error': ('date_of_birth' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63160,6 +63196,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "date",
       "name": "date_of_birth",
+      "id": "date_of_birth",
       "placeholder": "Geburtstdatum",
       "disabled": _vm.inProgress
     },
@@ -63172,18 +63209,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.date_of_birth = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.date_of_birth) ? _c('p', {
+  }), _vm._v(" "), (('date_of_birth' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.date_of_birth[0])
+      "textContent": _vm._s(_vm.error.errors.date_of_birth[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "radio",
     class: {
-      'has-error': _vm.error.is_male
+      'has-error': ('is_male' in _vm.error.errors)
     }
   }, [_c('label', {
     staticClass: "radio-inline"
@@ -63208,7 +63245,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.is_male = "1"
       }
     }
-  }), _vm._v("\n                                männlich\n                            ")]), _vm._v(" "), _c('label', {
+  }), _vm._v("\n                                        männlich\n                                    ")]), _vm._v(" "), _c('label', {
     staticClass: "radio-inline"
   }, [_c('input', {
     directives: [{
@@ -63231,13 +63268,13 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.is_male = "0"
       }
     }
-  }), _vm._v("\n                                weiblich\n                            ")]), _c('br'), _vm._v(" "), (_vm.error.is_male) ? _c('p', {
+  }), _vm._v("\n                                        weiblich\n                                    ")]), _c('br'), _vm._v(" "), (('is_male' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.is_male[0])
+      "textContent": _vm._s(_vm.error.errors.is_male[0])
     }
   }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
@@ -63252,7 +63289,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseTwo"
     }
-  }, [_vm._v("\n                            Aufnahme und Abgabe\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Aufnahme und Abgabe\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseTwo",
@@ -63263,7 +63300,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.registration_date
+      'has-error': ('registration_date' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63280,6 +63317,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "date",
       "name": "entry_date",
+      "id": "entry_date",
       "placeholder": "Aufnahmedatum",
       "disabled": _vm.inProgress
     },
@@ -63292,18 +63330,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.registration_date = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.registration_date) ? _c('p', {
+  }), _vm._v(" "), (('registration_date' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.registration_date[0])
+      "textContent": _vm._s(_vm.error.errors.registration_date[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.leave_date
+      'has-error': ('leave_date' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63320,6 +63358,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "date",
       "name": "leave_date",
+      "id": "leave_date",
       "placeholder": "Abgabedatum",
       "disabled": _vm.inProgress
     },
@@ -63332,13 +63371,13 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.leave_date = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.leave_date) ? _c('p', {
+  }), _vm._v(" "), (('leave_date' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.leave_date[0])
+      "textContent": _vm._s(_vm.error.errors.leave_date[0])
     }
   }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
@@ -63353,7 +63392,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseThree"
     }
-  }, [_vm._v("\n                        Aufenthaltsort\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Aufenthaltsort\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseThree",
@@ -63378,6 +63417,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "location",
+      "id": "location",
       "placeholder": "Ort, z. B. Fam. Müller",
       "disabled": _vm.inProgress
     },
@@ -63407,6 +63447,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "street",
+      "id": "street",
       "placeholder": "z. B. Musterstr. 42",
       "disabled": _vm.inProgress
     },
@@ -63436,6 +63477,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "city",
+      "id": "city",
       "placeholder": "z. B. 49074 Osnabrück",
       "disabled": _vm.inProgress
     },
@@ -63465,6 +63507,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "country",
+      "id": "country",
       "placeholder": "z. B. Deutschland",
       "disabled": _vm.inProgress
     },
@@ -63490,7 +63533,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseFour"
     }
-  }, [_vm._v("\n                            Kastration\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Kastration\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseFour",
@@ -63501,7 +63544,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.is_castrated
+      'has-error': ('is_castrated' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63516,7 +63559,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     attrs: {
       "type": "checkbox",
-      "name": "is_castrated"
+      "name": "is_castrated",
+      "id": "is_castrated"
     },
     domProps: {
       "checked": Array.isArray(_vm.form.is_castrated) ? _vm._i(_vm.form.is_castrated, null) > -1 : (_vm.form.is_castrated)
@@ -63539,13 +63583,13 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         }
       }
     }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_castrated) ? _c('p', {
+  }), _c('br'), _vm._v(" "), (('is_castrated' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.is_castrated[0])
+      "textContent": _vm._s(_vm.error.errors.is_castrated[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('transition', {
     attrs: {
@@ -63555,7 +63599,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [(_vm.form.is_castrated) ? _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.castration_date
+      'has-error': ('castration_date' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63572,6 +63616,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "date",
       "name": "castration_date",
+      "id": "castration_date",
       "placeholder": "Kastrationsdatum",
       "disabled": _vm.inProgress
     },
@@ -63584,13 +63629,13 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.castration_date = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.castration_date) ? _c('p', {
+  }), _vm._v(" "), (('castration_date' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.castration_date[0])
+      "textContent": _vm._s(_vm.error.errors.castration_date[0])
     }
   }) : _vm._e()]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
@@ -63605,7 +63650,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseFive"
     }
-  }, [_vm._v("\n                            Impfungen\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Impfungen\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseFive",
@@ -63616,7 +63661,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.first_vaccination
+      'has-error': ('first_vaccination' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63633,6 +63678,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "date",
       "name": "first_vaccination",
+      "id": "first_vaccination",
       "placeholder": "Erste Impfung",
       "disabled": _vm.inProgress
     },
@@ -63645,18 +63691,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.first_vaccination = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.first_vaccination) ? _c('p', {
+  }), _vm._v(" "), (('first_vaccination' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.first_vaccination[0])
+      "textContent": _vm._s(_vm.error.errors.first_vaccination[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.second_vaccination
+      'has-error': ('second_vaccination' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63673,6 +63719,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "date",
       "name": "second_vaccination",
+      "id": "second_vaccination",
       "placeholder": "Zweite Impfung",
       "disabled": _vm.inProgress
     },
@@ -63685,18 +63732,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.second_vaccination = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.second_vaccination) ? _c('p', {
+  }), _vm._v(" "), (('second_vaccination' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.second_vaccination[0])
+      "textContent": _vm._s(_vm.error.errors.second_vaccination[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.next_vaccination
+      'has-error': ('next_vaccination' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63725,13 +63772,13 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.next_vaccination = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.next_vaccination) ? _c('p', {
+  }), _vm._v(" "), (('next_vaccination' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.next_vaccination[0])
+      "textContent": _vm._s(_vm.error.errors.next_vaccination[0])
     }
   }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
@@ -63746,7 +63793,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseSix"
     }
-  }, [_vm._v("\n                            Tätowierung\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Tätowierung\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseSix",
@@ -63757,7 +63804,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.tattoo_left
+      'has-error': ('tattoo_left' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63774,6 +63821,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "tattoo_left",
+      "id": "tattoo_left",
       "placeholder": "Tätowierung links",
       "maxlength": "5",
       "disabled": _vm.inProgress
@@ -63787,18 +63835,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.tattoo_left = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.tattoo_left) ? _c('p', {
+  }), _vm._v(" "), (('tattoo_left' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.tattoo_left[0])
+      "textContent": _vm._s(_vm.error.errors.tattoo_left[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.tattoo_right
+      'has-error': ('tattoo_right' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63815,6 +63863,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "tattoo_right",
+      "id": "tattoo_right",
       "placeholder": "Tätowierung links",
       "maxlength": "5",
       "disabled": _vm.inProgress
@@ -63828,18 +63877,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.tattoo_right = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.tattoo_right) ? _c('p', {
+  }), _vm._v(" "), (('tattoo_right' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.tattoo_right[0])
+      "textContent": _vm._s(_vm.error.errors.tattoo_right[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.chip
+      'has-error': ('chip' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63856,6 +63905,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     attrs: {
       "type": "text",
       "name": "chip",
+      "id": "chip",
       "placeholder": "Chipnummer",
       "disabled": _vm.inProgress
     },
@@ -63868,13 +63918,13 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         _vm.form.chip = $event.target.value
       }
     }
-  }), _vm._v(" "), (_vm.error.chip) ? _c('p', {
+  }), _vm._v(" "), (('chip' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.chip[0])
+      "textContent": _vm._s(_vm.error.errors.chip[0])
     }
   }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
     staticClass: "panel panel-default"
@@ -63889,7 +63939,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseSeven"
     }
-  }, [_vm._v("\n                            Kommentare und Merkmale\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Kommentare und Merkmale\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseSeven",
@@ -63912,6 +63962,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     staticClass: "form-control",
     attrs: {
+      "id": "distinguishing_marks",
       "rows": "3",
       "disabled": _vm.inProgress,
       "placeholder": "Merkmale, z. B. Knick im Schwanz"
@@ -63940,6 +63991,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     staticClass: "form-control",
     attrs: {
+      "id": "comments",
       "rows": "3",
       "disabled": _vm.inProgress,
       "placeholder": "Kommentare, z. B. Übergabe an Gabi"
@@ -63966,7 +64018,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseEight"
     }
-  }, [_vm._v("\n                            Todesfall\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Todesfall\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseEight",
@@ -63977,7 +64029,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.deceased
+      'has-error': ('deceased' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -63992,7 +64044,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     attrs: {
       "type": "checkbox",
-      "name": "deceased"
+      "name": "deceased",
+      "id": "deceased"
     },
     domProps: {
       "checked": Array.isArray(_vm.form.deceased) ? _vm._i(_vm.form.deceased, null) > -1 : (_vm.form.deceased)
@@ -64015,13 +64068,13 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         }
       }
     }
-  }), _c('br'), _vm._v(" "), (_vm.error.chip) ? _c('p', {
+  }), _c('br'), _vm._v(" "), (('deceased' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.chip[0])
+      "textContent": _vm._s(_vm.error.errors.deceased[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('transition', {
     attrs: {
@@ -64070,7 +64123,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       "data-toggle": "collapse",
       "href": "#collapseNine"
     }
-  }, [_vm._v("\n                            Eigenschaften\n                        ")])]), _vm._v(" "), _c('div', {
+  }, [_vm._v("\n                                Eigenschaften\n                            ")])]), _vm._v(" "), _c('div', {
     staticClass: "panel-collapse collapse",
     attrs: {
       "id": "collapseNine",
@@ -64081,7 +64134,7 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   }, [_c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.is_outdoor_cat
+      'has-error': ('is_outdoor_cat' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -64096,7 +64149,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     attrs: {
       "type": "checkbox",
-      "name": "outdoor"
+      "name": "outdoor",
+      "id": "outdoor"
     },
     domProps: {
       "checked": Array.isArray(_vm.form.is_outdoor_cat) ? _vm._i(_vm.form.is_outdoor_cat, null) > -1 : (_vm.form.is_outdoor_cat)
@@ -64119,18 +64173,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         }
       }
     }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_outdoor_cat) ? _c('p', {
+  }), _c('br'), _vm._v(" "), (('is_outdoor_cat' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.is_outdoor_cat[0])
+      "textContent": _vm._s(_vm.error.errors.is_outdoor_cat[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.is_indoor_cat
+      'has-error': ('is_indoor_cat' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -64145,7 +64199,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     attrs: {
       "type": "checkbox",
-      "name": "indoor"
+      "name": "indoor",
+      "id": "indoor"
     },
     domProps: {
       "checked": Array.isArray(_vm.form.is_indoor_cat) ? _vm._i(_vm.form.is_indoor_cat, null) > -1 : (_vm.form.is_indoor_cat)
@@ -64168,18 +64223,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         }
       }
     }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_indoor_cat) ? _c('p', {
+  }), _c('br'), _vm._v(" "), (('is_indoor_cat' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.is_indoor_cat[0])
+      "textContent": _vm._s(_vm.error.errors.is_indoor_cat[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.is_cat_friendly
+      'has-error': ('is_cat_friendly' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -64194,7 +64249,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     attrs: {
       "type": "checkbox",
-      "name": "cat_friendly"
+      "name": "cat_friendly",
+      "id": "cat_friendly"
     },
     domProps: {
       "checked": Array.isArray(_vm.form.is_cat_friendly) ? _vm._i(_vm.form.is_cat_friendly, null) > -1 : (_vm.form.is_cat_friendly)
@@ -64217,18 +64273,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         }
       }
     }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_cat_friendly) ? _c('p', {
+  }), _c('br'), _vm._v(" "), (('is_cat_friendly' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.is_cat_friendly[0])
+      "textContent": _vm._s(_vm.error.errors.is_cat_friendly[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.is_dog_friendly
+      'has-error': ('is_dog_friendly' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -64243,7 +64299,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     attrs: {
       "type": "checkbox",
-      "name": "dog_friendly"
+      "name": "dog_friendly",
+      "id": "dog_friendly"
     },
     domProps: {
       "checked": Array.isArray(_vm.form.is_dog_friendly) ? _vm._i(_vm.form.is_dog_friendly, null) > -1 : (_vm.form.is_dog_friendly)
@@ -64266,18 +64323,18 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         }
       }
     }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_dog_friendly) ? _c('p', {
+  }), _c('br'), _vm._v(" "), (('is_dog_friendly' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.is_dog_friendly[0])
+      "textContent": _vm._s(_vm.error.errors.is_dog_friendly[0])
     }
   }) : _vm._e()]), _vm._v(" "), _c('div', {
     staticClass: "form-group",
     class: {
-      'has-error': _vm.error.is_child_friendly
+      'has-error': ('is_child_friendly' in _vm.error.errors)
     }
   }, [_c('label', {
     attrs: {
@@ -64292,7 +64349,8 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     }],
     attrs: {
       "type": "checkbox",
-      "name": "child_friendly"
+      "name": "child_friendly",
+      "id": "child_friendly"
     },
     domProps: {
       "checked": Array.isArray(_vm.form.is_child_friendly) ? _vm._i(_vm.form.is_child_friendly, null) > -1 : (_vm.form.is_child_friendly)
@@ -64315,13 +64373,13 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
         }
       }
     }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_child_friendly) ? _c('p', {
+  }), _c('br'), _vm._v(" "), (('is_child_friendly' in _vm.error.errors)) ? _c('p', {
     staticClass: "text-danger",
     attrs: {
       "role": "alert"
     },
     domProps: {
-      "textContent": _vm._s(_vm.error.is_child_friendly[0])
+      "textContent": _vm._s(_vm.error.errors.is_child_friendly[0])
     }
   }) : _vm._e()])])])])]), _vm._v(" "), _c('button', {
     staticClass: "btn btn-primary pull-right",

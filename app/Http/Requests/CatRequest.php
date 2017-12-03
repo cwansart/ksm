@@ -37,7 +37,7 @@ class CatRequest extends FormRequest
             'tattoo_left' => 'string|max:5|nullable',
             'tattoo_right' => 'string|max:5|nullable',
 
-            'chip' => 'integer|nullable',
+            'chip' => 'integer|nullable|min:15|max:15',
 
             'is_male' => 'boolean',
             'is_castrated' => 'boolean',
