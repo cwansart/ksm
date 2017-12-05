@@ -72,7 +72,6 @@
             },
 
             queryChanged(query) {
-                console.log('Query Changed', query)
                 if (query.page !== undefined) {
                     this.pageChanged(query.page)
                 }
