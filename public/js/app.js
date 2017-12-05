@@ -59925,7 +59925,6 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             });
         },
         queryChanged: function queryChanged(query) {
-            console.log('Query Changed', query);
             if (query.page !== undefined) {
                 this.pageChanged(query.page);
             }
@@ -61117,7 +61116,13 @@ var render = function() {
                                       _c(
                                         "cat-detail-row",
                                         { attrs: { label: "Verstorben" } },
-                                        [_vm._v(_vm._s(_vm.cat.deceased))]
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.deceased ? "ja" : "nein"
+                                            )
+                                          )
+                                        ]
                                       ),
                                       _vm._v(" "),
                                       _c(
@@ -61126,7 +61131,7 @@ var render = function() {
                                         [
                                           _vm._v(
                                             _vm._s(
-                                              _vm.cause_of_death ||
+                                              _vm.cat.cause_of_death ||
                                                 "keiner angegeben"
                                             )
                                           )

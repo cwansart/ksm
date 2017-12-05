@@ -108,8 +108,8 @@
                                 <div class="todesfall" v-if="activeTab == 'todesfall'" key="8">
                                     <h2>Todesfall</h2>
 
-                                    <cat-detail-row label="Verstorben">{{ cat.deceased }}</cat-detail-row>
-                                    <cat-detail-row label="Todesursache">{{ cause_of_death || 'keiner angegeben' }}</cat-detail-row>
+                                    <cat-detail-row label="Verstorben">{{ cat.deceased ? 'ja' : 'nein' }}</cat-detail-row>
+                                    <cat-detail-row label="Todesursache">{{ cat.cause_of_death || 'keiner angegeben' }}</cat-detail-row>
                                 </div>
 
                                 <div class="eigenschaften" v-if="activeTab == 'eigenschaften'" key="9">

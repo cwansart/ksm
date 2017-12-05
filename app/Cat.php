@@ -37,4 +37,15 @@ class Cat extends Model
         'is_child_friendly',
         'photo_path'
     ];
+
+    protected $casts = [
+        'is_male' => 'boolean',
+        'is_castrated' => 'boolean',
+        'deceased' => 'boolean',
+        'is_indoor_cat' => 'boolean',
+        'is_outdoor_cat' => 'boolean',
+        'is_cat_friendly' => 'boolean',
+        'is_dog_friendly' => 'boolean',
+        'is_child_friendly' => 'boolean'
+    ];
 }
