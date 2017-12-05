@@ -60349,7 +60349,7 @@ var render = function() {
                     "aria-label": "Show",
                     "data-toggle": "tooltip",
                     "data-placement": "bottom",
-                    title: "alle Daten anzeigen"
+                    title: "Details anzeigen/verstecken"
                   },
                   on: { click: _vm.toggle }
                 },

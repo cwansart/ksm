@@ -7,7 +7,7 @@
         <div class="panel-body">
             <ul class="media-list">
                 <li class="media">
-                    <button type="button" @click="toggle" class=" close" aria-label="Show" data-toggle="tooltip" data-placement="bottom" title="alle Daten anzeigen">
+                    <button type="button" @click="toggle" class=" close" aria-label="Show" data-toggle="tooltip" data-placement="bottom" title="Details anzeigen/verstecken">
                         <span :class="{ 'rotated': showDetails }" class="open-close-btn glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
                     </button>
 
