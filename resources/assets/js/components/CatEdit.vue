@@ -405,7 +405,6 @@
                 })
                 .catch(error => {
                     this.error = error.response.data
-                    console.log('THIS ERROR', this.error)
 
                     let firstError = Object.keys(this.error.errors)[0]
                     $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
