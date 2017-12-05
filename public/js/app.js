@@ -51,8 +51,8 @@ module.exports = $export;
 /* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(module) {//! moment.js
-//! version : 2.18.1
+/* WEBPACK VAR INJECTION */(function(module) {var require;//! moment.js
+//! version : 2.19.3
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors
 //! license : MIT
 //! momentjs.com
@@ -86,12 +86,17 @@ function isObject(input) {
 }
 
 function isObjectEmpty(obj) {
-    var k;
-    for (k in obj) {
-        // even if its not own property I'd still call it non-empty
-        return false;
+    if (Object.getOwnPropertyNames) {
+        return (Object.getOwnPropertyNames(obj).length === 0);
+    } else {
+        var k;
+        for (k in obj) {
+            if (obj.hasOwnProperty(k)) {
+                return false;
+            }
+        }
+        return true;
     }
-    return true;
 }
 
 function isUndefined(input) {
@@ -185,12 +190,10 @@ if (Array.prototype.some) {
     };
 }
 
-var some$1 = some;
-
 function isValid(m) {
     if (m._isValid == null) {
         var flags = getParsingFlags(m);
-        var parsedParts = some$1.call(flags.parsedDateParts, function (i) {
+        var parsedParts = some.call(flags.parsedDateParts, function (i) {
             return i != null;
         });
         var isNowValid = !isNaN(m._d.getTime()) &&
@@ -198,6 +201,7 @@ function isValid(m) {
             !flags.empty &&
             !flags.invalidMonth &&
             !flags.invalidWeekday &&
+            !flags.weekdayMismatch &&
             !flags.nullInput &&
             !flags.invalidFormat &&
             !flags.userInvalidated &&
@@ -463,8 +467,6 @@ if (Object.keys) {
     };
 }
 
-var keys$1 = keys;
-
 var defaultCalendar = {
     sameDay : '[Today at] LT',
     nextDay : '[Tomorrow at] LT',
@@ -590,56 +592,6 @@ function getPrioritizedUnits(unitsObj) {
     return units;
 }
 
-function makeGetSet (unit, keepTime) {
-    return function (value) {
-        if (value != null) {
-            set$1(this, unit, value);
-            hooks.updateOffset(this, keepTime);
-            return this;
-        } else {
-            return get(this, unit);
-        }
-    };
-}
-
-function get (mom, unit) {
-    return mom.isValid() ?
-        mom._d['get' + (mom._isUTC ? 'UTC' : '') + unit]() : NaN;
-}
-
-function set$1 (mom, unit, value) {
-    if (mom.isValid()) {
-        mom._d['set' + (mom._isUTC ? 'UTC' : '') + unit](value);
-    }
-}
-
-// MOMENTS
-
-function stringGet (units) {
-    units = normalizeUnits(units);
-    if (isFunction(this[units])) {
-        return this[units]();
-    }
-    return this;
-}
-
-
-function stringSet (units, value) {
-    if (typeof units === 'object') {
-        units = normalizeObjectUnits(units);
-        var prioritized = getPrioritizedUnits(units);
-        for (var i = 0; i < prioritized.length; i++) {
-            this[prioritized[i].unit](units[prioritized[i].unit]);
-        }
-    } else {
-        units = normalizeUnits(units);
-        if (isFunction(this[units])) {
-            return this[units](value);
-        }
-    }
-    return this;
-}
-
 function zeroFill(number, targetLength, forceSign) {
     var absNumber = '' + Math.abs(number),
         zerosToFill = targetLength - absNumber.length,
@@ -760,7 +712,7 @@ var matchTimestamp = /[+-]?\d+(\.\d{1,3})?/; // 123456789 123456789.123
 
 // any word (or two) characters or numbers including two/three word month in arabic.
 // includes scottish gaelic two word and hyphenated months
-var matchWord = /[0-9]*['a-z\u00A0-\u05FF\u0700-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+|[\u0600-\u06FF\/]+(\s*?[\u0600-\u06FF]+){1,2}/i;
+var matchWord = /[0-9]{0,256}['a-z\u00A0-\u05FF\u0700-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]{1,256}|[\u0600-\u06FF\/]{1,256}(\s*?[\u0600-\u06FF]{1,256}){1,2}/i;
 
 
 var regexes = {};
@@ -830,6 +782,131 @@ var MILLISECOND = 6;
 var WEEK = 7;
 var WEEKDAY = 8;
 
+// FORMATTING
+
+addFormatToken('Y', 0, 0, function () {
+    var y = this.year();
+    return y <= 9999 ? '' + y : '+' + y;
+});
+
+addFormatToken(0, ['YY', 2], 0, function () {
+    return this.year() % 100;
+});
+
+addFormatToken(0, ['YYYY',   4],       0, 'year');
+addFormatToken(0, ['YYYYY',  5],       0, 'year');
+addFormatToken(0, ['YYYYYY', 6, true], 0, 'year');
+
+// ALIASES
+
+addUnitAlias('year', 'y');
+
+// PRIORITIES
+
+addUnitPriority('year', 1);
+
+// PARSING
+
+addRegexToken('Y',      matchSigned);
+addRegexToken('YY',     match1to2, match2);
+addRegexToken('YYYY',   match1to4, match4);
+addRegexToken('YYYYY',  match1to6, match6);
+addRegexToken('YYYYYY', match1to6, match6);
+
+addParseToken(['YYYYY', 'YYYYYY'], YEAR);
+addParseToken('YYYY', function (input, array) {
+    array[YEAR] = input.length === 2 ? hooks.parseTwoDigitYear(input) : toInt(input);
+});
+addParseToken('YY', function (input, array) {
+    array[YEAR] = hooks.parseTwoDigitYear(input);
+});
+addParseToken('Y', function (input, array) {
+    array[YEAR] = parseInt(input, 10);
+});
+
+// HELPERS
+
+function daysInYear(year) {
+    return isLeapYear(year) ? 366 : 365;
+}
+
+function isLeapYear(year) {
+    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+// HOOKS
+
+hooks.parseTwoDigitYear = function (input) {
+    return toInt(input) + (toInt(input) > 68 ? 1900 : 2000);
+};
+
+// MOMENTS
+
+var getSetYear = makeGetSet('FullYear', true);
+
+function getIsLeapYear () {
+    return isLeapYear(this.year());
+}
+
+function makeGetSet (unit, keepTime) {
+    return function (value) {
+        if (value != null) {
+            set$1(this, unit, value);
+            hooks.updateOffset(this, keepTime);
+            return this;
+        } else {
+            return get(this, unit);
+        }
+    };
+}
+
+function get (mom, unit) {
+    return mom.isValid() ?
+        mom._d['get' + (mom._isUTC ? 'UTC' : '') + unit]() : NaN;
+}
+
+function set$1 (mom, unit, value) {
+    if (mom.isValid() && !isNaN(value)) {
+        if (unit === 'FullYear' && isLeapYear(mom.year()) && mom.month() === 1 && mom.date() === 29) {
+            mom._d['set' + (mom._isUTC ? 'UTC' : '') + unit](value, mom.month(), daysInMonth(value, mom.month()));
+        }
+        else {
+            mom._d['set' + (mom._isUTC ? 'UTC' : '') + unit](value);
+        }
+    }
+}
+
+// MOMENTS
+
+function stringGet (units) {
+    units = normalizeUnits(units);
+    if (isFunction(this[units])) {
+        return this[units]();
+    }
+    return this;
+}
+
+
+function stringSet (units, value) {
+    if (typeof units === 'object') {
+        units = normalizeObjectUnits(units);
+        var prioritized = getPrioritizedUnits(units);
+        for (var i = 0; i < prioritized.length; i++) {
+            this[prioritized[i].unit](units[prioritized[i].unit]);
+        }
+    } else {
+        units = normalizeUnits(units);
+        if (isFunction(this[units])) {
+            return this[units](value);
+        }
+    }
+    return this;
+}
+
+function mod(n, x) {
+    return ((n % x) + x) % x;
+}
+
 var indexOf;
 
 if (Array.prototype.indexOf) {
@@ -847,10 +924,13 @@ if (Array.prototype.indexOf) {
     };
 }
 
-var indexOf$1 = indexOf;
-
 function daysInMonth(year, month) {
-    return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    if (isNaN(year) || isNaN(month)) {
+        return NaN;
+    }
+    var modMonth = mod(month, 12);
+    year += (month - modMonth) / 12;
+    return modMonth === 1 ? (isLeapYear(year) ? 29 : 28) : (31 - modMonth % 7 % 2);
 }
 
 // FORMATTING
@@ -939,26 +1019,26 @@ function handleStrictParse(monthName, format, strict) {
 
     if (strict) {
         if (format === 'MMM') {
-            ii = indexOf$1.call(this._shortMonthsParse, llc);
+            ii = indexOf.call(this._shortMonthsParse, llc);
             return ii !== -1 ? ii : null;
         } else {
-            ii = indexOf$1.call(this._longMonthsParse, llc);
+            ii = indexOf.call(this._longMonthsParse, llc);
             return ii !== -1 ? ii : null;
         }
     } else {
         if (format === 'MMM') {
-            ii = indexOf$1.call(this._shortMonthsParse, llc);
+            ii = indexOf.call(this._shortMonthsParse, llc);
             if (ii !== -1) {
                 return ii;
             }
-            ii = indexOf$1.call(this._longMonthsParse, llc);
+            ii = indexOf.call(this._longMonthsParse, llc);
             return ii !== -1 ? ii : null;
         } else {
-            ii = indexOf$1.call(this._longMonthsParse, llc);
+            ii = indexOf.call(this._longMonthsParse, llc);
             if (ii !== -1) {
                 return ii;
             }
-            ii = indexOf$1.call(this._shortMonthsParse, llc);
+            ii = indexOf.call(this._shortMonthsParse, llc);
             return ii !== -1 ? ii : null;
         }
     }
@@ -1115,72 +1195,6 @@ function computeMonthsParse () {
     this._monthsShortRegex = this._monthsRegex;
     this._monthsStrictRegex = new RegExp('^(' + longPieces.join('|') + ')', 'i');
     this._monthsShortStrictRegex = new RegExp('^(' + shortPieces.join('|') + ')', 'i');
-}
-
-// FORMATTING
-
-addFormatToken('Y', 0, 0, function () {
-    var y = this.year();
-    return y <= 9999 ? '' + y : '+' + y;
-});
-
-addFormatToken(0, ['YY', 2], 0, function () {
-    return this.year() % 100;
-});
-
-addFormatToken(0, ['YYYY',   4],       0, 'year');
-addFormatToken(0, ['YYYYY',  5],       0, 'year');
-addFormatToken(0, ['YYYYYY', 6, true], 0, 'year');
-
-// ALIASES
-
-addUnitAlias('year', 'y');
-
-// PRIORITIES
-
-addUnitPriority('year', 1);
-
-// PARSING
-
-addRegexToken('Y',      matchSigned);
-addRegexToken('YY',     match1to2, match2);
-addRegexToken('YYYY',   match1to4, match4);
-addRegexToken('YYYYY',  match1to6, match6);
-addRegexToken('YYYYYY', match1to6, match6);
-
-addParseToken(['YYYYY', 'YYYYYY'], YEAR);
-addParseToken('YYYY', function (input, array) {
-    array[YEAR] = input.length === 2 ? hooks.parseTwoDigitYear(input) : toInt(input);
-});
-addParseToken('YY', function (input, array) {
-    array[YEAR] = hooks.parseTwoDigitYear(input);
-});
-addParseToken('Y', function (input, array) {
-    array[YEAR] = parseInt(input, 10);
-});
-
-// HELPERS
-
-function daysInYear(year) {
-    return isLeapYear(year) ? 366 : 365;
-}
-
-function isLeapYear(year) {
-    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-}
-
-// HOOKS
-
-hooks.parseTwoDigitYear = function (input) {
-    return toInt(input) + (toInt(input) > 68 ? 1900 : 2000);
-};
-
-// MOMENTS
-
-var getSetYear = makeGetSet('FullYear', true);
-
-function getIsLeapYear () {
-    return isLeapYear(this.year());
 }
 
 function createDate (y, m, d, h, M, s, ms) {
@@ -1450,48 +1464,48 @@ function handleStrictParse$1(weekdayName, format, strict) {
 
     if (strict) {
         if (format === 'dddd') {
-            ii = indexOf$1.call(this._weekdaysParse, llc);
+            ii = indexOf.call(this._weekdaysParse, llc);
             return ii !== -1 ? ii : null;
         } else if (format === 'ddd') {
-            ii = indexOf$1.call(this._shortWeekdaysParse, llc);
+            ii = indexOf.call(this._shortWeekdaysParse, llc);
             return ii !== -1 ? ii : null;
         } else {
-            ii = indexOf$1.call(this._minWeekdaysParse, llc);
+            ii = indexOf.call(this._minWeekdaysParse, llc);
             return ii !== -1 ? ii : null;
         }
     } else {
         if (format === 'dddd') {
-            ii = indexOf$1.call(this._weekdaysParse, llc);
+            ii = indexOf.call(this._weekdaysParse, llc);
             if (ii !== -1) {
                 return ii;
             }
-            ii = indexOf$1.call(this._shortWeekdaysParse, llc);
+            ii = indexOf.call(this._shortWeekdaysParse, llc);
             if (ii !== -1) {
                 return ii;
             }
-            ii = indexOf$1.call(this._minWeekdaysParse, llc);
+            ii = indexOf.call(this._minWeekdaysParse, llc);
             return ii !== -1 ? ii : null;
         } else if (format === 'ddd') {
-            ii = indexOf$1.call(this._shortWeekdaysParse, llc);
+            ii = indexOf.call(this._shortWeekdaysParse, llc);
             if (ii !== -1) {
                 return ii;
             }
-            ii = indexOf$1.call(this._weekdaysParse, llc);
+            ii = indexOf.call(this._weekdaysParse, llc);
             if (ii !== -1) {
                 return ii;
             }
-            ii = indexOf$1.call(this._minWeekdaysParse, llc);
+            ii = indexOf.call(this._minWeekdaysParse, llc);
             return ii !== -1 ? ii : null;
         } else {
-            ii = indexOf$1.call(this._minWeekdaysParse, llc);
+            ii = indexOf.call(this._minWeekdaysParse, llc);
             if (ii !== -1) {
                 return ii;
             }
-            ii = indexOf$1.call(this._weekdaysParse, llc);
+            ii = indexOf.call(this._weekdaysParse, llc);
             if (ii !== -1) {
                 return ii;
             }
-            ii = indexOf$1.call(this._shortWeekdaysParse, llc);
+            ii = indexOf.call(this._shortWeekdaysParse, llc);
             return ii !== -1 ? ii : null;
         }
     }
@@ -1880,11 +1894,10 @@ function loadLocale(name) {
             module && module.exports) {
         try {
             oldLocale = globalLocale._abbr;
-            __webpack_require__(258)("./" + name);
-            // because defineLocale currently also sets the global locale, we
-            // want to undo that for lazy loaded locales
+            var aliasedRequire = require;
+            __webpack_require__(262)("./" + name);
             getSetGlobalLocale(oldLocale);
-        } catch (e) { }
+        } catch (e) {}
     }
     return locales[name];
 }
@@ -1960,10 +1973,11 @@ function defineLocale (name, config) {
 
 function updateLocale(name, config) {
     if (config != null) {
-        var locale, parentConfig = baseConfig;
+        var locale, tmpLocale, parentConfig = baseConfig;
         // MERGE
-        if (locales[name] != null) {
-            parentConfig = locales[name]._config;
+        tmpLocale = loadLocale(name);
+        if (tmpLocale != null) {
+            parentConfig = tmpLocale._config;
         }
         config = mergeConfigs(parentConfig, config);
         locale = new Locale(config);
@@ -2010,7 +2024,7 @@ function getLocale (key) {
 }
 
 function listLocales() {
-    return keys$1(locales);
+    return keys(locales);
 }
 
 function checkOverflow (m) {
@@ -2041,6 +2055,154 @@ function checkOverflow (m) {
     }
 
     return m;
+}
+
+// Pick the first defined of two or three arguments.
+function defaults(a, b, c) {
+    if (a != null) {
+        return a;
+    }
+    if (b != null) {
+        return b;
+    }
+    return c;
+}
+
+function currentDateArray(config) {
+    // hooks is actually the exported moment object
+    var nowValue = new Date(hooks.now());
+    if (config._useUTC) {
+        return [nowValue.getUTCFullYear(), nowValue.getUTCMonth(), nowValue.getUTCDate()];
+    }
+    return [nowValue.getFullYear(), nowValue.getMonth(), nowValue.getDate()];
+}
+
+// convert an array to a date.
+// the array should mirror the parameters below
+// note: all values past the year are optional and will default to the lowest possible value.
+// [year, month, day , hour, minute, second, millisecond]
+function configFromArray (config) {
+    var i, date, input = [], currentDate, yearToUse;
+
+    if (config._d) {
+        return;
+    }
+
+    currentDate = currentDateArray(config);
+
+    //compute day of the year from weeks and weekdays
+    if (config._w && config._a[DATE] == null && config._a[MONTH] == null) {
+        dayOfYearFromWeekInfo(config);
+    }
+
+    //if the day of the year is set, figure out what it is
+    if (config._dayOfYear != null) {
+        yearToUse = defaults(config._a[YEAR], currentDate[YEAR]);
+
+        if (config._dayOfYear > daysInYear(yearToUse) || config._dayOfYear === 0) {
+            getParsingFlags(config)._overflowDayOfYear = true;
+        }
+
+        date = createUTCDate(yearToUse, 0, config._dayOfYear);
+        config._a[MONTH] = date.getUTCMonth();
+        config._a[DATE] = date.getUTCDate();
+    }
+
+    // Default to current date.
+    // * if no year, month, day of month are given, default to today
+    // * if day of month is given, default month and year
+    // * if month is given, default only year
+    // * if year is given, don't default anything
+    for (i = 0; i < 3 && config._a[i] == null; ++i) {
+        config._a[i] = input[i] = currentDate[i];
+    }
+
+    // Zero out whatever was not defaulted, including time
+    for (; i < 7; i++) {
+        config._a[i] = input[i] = (config._a[i] == null) ? (i === 2 ? 1 : 0) : config._a[i];
+    }
+
+    // Check for 24:00:00.000
+    if (config._a[HOUR] === 24 &&
+            config._a[MINUTE] === 0 &&
+            config._a[SECOND] === 0 &&
+            config._a[MILLISECOND] === 0) {
+        config._nextDay = true;
+        config._a[HOUR] = 0;
+    }
+
+    config._d = (config._useUTC ? createUTCDate : createDate).apply(null, input);
+    // Apply timezone offset from input. The actual utcOffset can be changed
+    // with parseZone.
+    if (config._tzm != null) {
+        config._d.setUTCMinutes(config._d.getUTCMinutes() - config._tzm);
+    }
+
+    if (config._nextDay) {
+        config._a[HOUR] = 24;
+    }
+
+    // check for mismatching day of week
+    if (config._w && typeof config._w.d !== 'undefined' && config._w.d !== config._d.getDay()) {
+        getParsingFlags(config).weekdayMismatch = true;
+    }
+}
+
+function dayOfYearFromWeekInfo(config) {
+    var w, weekYear, week, weekday, dow, doy, temp, weekdayOverflow;
+
+    w = config._w;
+    if (w.GG != null || w.W != null || w.E != null) {
+        dow = 1;
+        doy = 4;
+
+        // TODO: We need to take the current isoWeekYear, but that depends on
+        // how we interpret now (local, utc, fixed offset). So create
+        // a now version of current config (take local/utc/offset flags, and
+        // create now).
+        weekYear = defaults(w.GG, config._a[YEAR], weekOfYear(createLocal(), 1, 4).year);
+        week = defaults(w.W, 1);
+        weekday = defaults(w.E, 1);
+        if (weekday < 1 || weekday > 7) {
+            weekdayOverflow = true;
+        }
+    } else {
+        dow = config._locale._week.dow;
+        doy = config._locale._week.doy;
+
+        var curWeek = weekOfYear(createLocal(), dow, doy);
+
+        weekYear = defaults(w.gg, config._a[YEAR], curWeek.year);
+
+        // Default to current week.
+        week = defaults(w.w, curWeek.week);
+
+        if (w.d != null) {
+            // weekday -- low day numbers are considered next week
+            weekday = w.d;
+            if (weekday < 0 || weekday > 6) {
+                weekdayOverflow = true;
+            }
+        } else if (w.e != null) {
+            // local weekday -- counting starts from begining of week
+            weekday = w.e + dow;
+            if (w.e < 0 || w.e > 6) {
+                weekdayOverflow = true;
+            }
+        } else {
+            // default to begining of week
+            weekday = dow;
+        }
+    }
+    if (week < 1 || week > weeksInYear(weekYear, dow, doy)) {
+        getParsingFlags(config)._overflowWeeks = true;
+    } else if (weekdayOverflow != null) {
+        getParsingFlags(config)._overflowWeekday = true;
+    } else {
+        temp = dayOfYearFromWeeks(weekYear, week, weekday, dow, doy);
+        config._a[YEAR] = temp.year;
+        config._dayOfYear = temp.dayOfYear;
+    }
 }
 
 // iso 8601 regex
@@ -2134,70 +2296,94 @@ function configFromISO(config) {
 }
 
 // RFC 2822 regex: For details see https://tools.ietf.org/html/rfc2822#section-3.3
-var basicRfcRegex = /^((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s)?(\d?\d\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(?:\d\d)?\d\d\s)(\d\d:\d\d)(\:\d\d)?(\s(?:UT|GMT|[ECMP][SD]T|[A-IK-Za-ik-z]|[+-]\d{4}))$/;
+var rfc2822 = /^(?:(Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s)?(\d{1,2})\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{2,4})\s(\d\d):(\d\d)(?::(\d\d))?\s(?:(UT|GMT|[ECMP][SD]T)|([Zz])|([+-]\d{4}))$/;
+
+function extractFromRFC2822Strings(yearStr, monthStr, dayStr, hourStr, minuteStr, secondStr) {
+    var result = [
+        untruncateYear(yearStr),
+        defaultLocaleMonthsShort.indexOf(monthStr),
+        parseInt(dayStr, 10),
+        parseInt(hourStr, 10),
+        parseInt(minuteStr, 10)
+    ];
+
+    if (secondStr) {
+        result.push(parseInt(secondStr, 10));
+    }
+
+    return result;
+}
+
+function untruncateYear(yearStr) {
+    var year = parseInt(yearStr, 10);
+    if (year <= 49) {
+        return 2000 + year;
+    } else if (year <= 999) {
+        return 1900 + year;
+    }
+    return year;
+}
+
+function preprocessRFC2822(s) {
+    // Remove comments and folding whitespace and replace multiple-spaces with a single space
+    return s.replace(/\([^)]*\)|[\n\t]/g, ' ').replace(/(\s\s+)/g, ' ').trim();
+}
+
+function checkWeekday(weekdayStr, parsedInput, config) {
+    if (weekdayStr) {
+        // TODO: Replace the vanilla JS Date object with an indepentent day-of-week check.
+        var weekdayProvided = defaultLocaleWeekdaysShort.indexOf(weekdayStr),
+            weekdayActual = new Date(parsedInput[0], parsedInput[1], parsedInput[2]).getDay();
+        if (weekdayProvided !== weekdayActual) {
+            getParsingFlags(config).weekdayMismatch = true;
+            config._isValid = false;
+            return false;
+        }
+    }
+    return true;
+}
+
+var obsOffsets = {
+    UT: 0,
+    GMT: 0,
+    EDT: -4 * 60,
+    EST: -5 * 60,
+    CDT: -5 * 60,
+    CST: -6 * 60,
+    MDT: -6 * 60,
+    MST: -7 * 60,
+    PDT: -7 * 60,
+    PST: -8 * 60
+};
+
+function calculateOffset(obsOffset, militaryOffset, numOffset) {
+    if (obsOffset) {
+        return obsOffsets[obsOffset];
+    } else if (militaryOffset) {
+        // the only allowed military tz is Z
+        return 0;
+    } else {
+        var hm = parseInt(numOffset, 10);
+        var m = hm % 100, h = (hm - m) / 100;
+        return h * 60 + m;
+    }
+}
 
 // date and time from ref 2822 format
 function configFromRFC2822(config) {
-    var string, match, dayFormat,
-        dateFormat, timeFormat, tzFormat;
-    var timezones = {
-        ' GMT': ' +0000',
-        ' EDT': ' -0400',
-        ' EST': ' -0500',
-        ' CDT': ' -0500',
-        ' CST': ' -0600',
-        ' MDT': ' -0600',
-        ' MST': ' -0700',
-        ' PDT': ' -0700',
-        ' PST': ' -0800'
-    };
-    var military = 'YXWVUTSRQPONZABCDEFGHIKLM';
-    var timezone, timezoneIndex;
-
-    string = config._i
-        .replace(/\([^\)]*\)|[\n\t]/g, ' ') // Remove comments and folding whitespace
-        .replace(/(\s\s+)/g, ' ') // Replace multiple-spaces with a single space
-        .replace(/^\s|\s$/g, ''); // Remove leading and trailing spaces
-    match = basicRfcRegex.exec(string);
-
+    var match = rfc2822.exec(preprocessRFC2822(config._i));
     if (match) {
-        dayFormat = match[1] ? 'ddd' + ((match[1].length === 5) ? ', ' : ' ') : '';
-        dateFormat = 'D MMM ' + ((match[2].length > 10) ? 'YYYY ' : 'YY ');
-        timeFormat = 'HH:mm' + (match[4] ? ':ss' : '');
-
-        // TODO: Replace the vanilla JS Date object with an indepentent day-of-week check.
-        if (match[1]) { // day of week given
-            var momentDate = new Date(match[2]);
-            var momentDay = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][momentDate.getDay()];
-
-            if (match[1].substr(0,3) !== momentDay) {
-                getParsingFlags(config).weekdayMismatch = true;
-                config._isValid = false;
-                return;
-            }
+        var parsedArray = extractFromRFC2822Strings(match[4], match[3], match[2], match[5], match[6], match[7]);
+        if (!checkWeekday(match[1], parsedArray, config)) {
+            return;
         }
 
-        switch (match[5].length) {
-            case 2: // military
-                if (timezoneIndex === 0) {
-                    timezone = ' +0000';
-                } else {
-                    timezoneIndex = military.indexOf(match[5][1].toUpperCase()) - 12;
-                    timezone = ((timezoneIndex < 0) ? ' -' : ' +') +
-                        (('' + timezoneIndex).replace(/^-?/, '0')).match(/..$/)[0] + '00';
-                }
-                break;
-            case 4: // Zone
-                timezone = timezones[match[5]];
-                break;
-            default: // UT or +/-9999
-                timezone = timezones[' GMT'];
-        }
-        match[5] = timezone;
-        config._i = match.splice(1).join('');
-        tzFormat = ' ZZ';
-        config._f = dayFormat + dateFormat + timeFormat + tzFormat;
-        configFromStringAndFormat(config);
+        config._a = parsedArray;
+        config._tzm = calculateOffset(match[8], match[9], match[10]);
+
+        config._d = createUTCDate.apply(null, config._a);
+        config._d.setUTCMinutes(config._d.getUTCMinutes() - config._tzm);
+
         getParsingFlags(config).rfc2822 = true;
     } else {
         config._isValid = false;
@@ -2240,149 +2426,6 @@ hooks.createFromInputFallback = deprecate(
         config._d = new Date(config._i + (config._useUTC ? ' UTC' : ''));
     }
 );
-
-// Pick the first defined of two or three arguments.
-function defaults(a, b, c) {
-    if (a != null) {
-        return a;
-    }
-    if (b != null) {
-        return b;
-    }
-    return c;
-}
-
-function currentDateArray(config) {
-    // hooks is actually the exported moment object
-    var nowValue = new Date(hooks.now());
-    if (config._useUTC) {
-        return [nowValue.getUTCFullYear(), nowValue.getUTCMonth(), nowValue.getUTCDate()];
-    }
-    return [nowValue.getFullYear(), nowValue.getMonth(), nowValue.getDate()];
-}
-
-// convert an array to a date.
-// the array should mirror the parameters below
-// note: all values past the year are optional and will default to the lowest possible value.
-// [year, month, day , hour, minute, second, millisecond]
-function configFromArray (config) {
-    var i, date, input = [], currentDate, yearToUse;
-
-    if (config._d) {
-        return;
-    }
-
-    currentDate = currentDateArray(config);
-
-    //compute day of the year from weeks and weekdays
-    if (config._w && config._a[DATE] == null && config._a[MONTH] == null) {
-        dayOfYearFromWeekInfo(config);
-    }
-
-    //if the day of the year is set, figure out what it is
-    if (config._dayOfYear != null) {
-        yearToUse = defaults(config._a[YEAR], currentDate[YEAR]);
-
-        if (config._dayOfYear > daysInYear(yearToUse) || config._dayOfYear === 0) {
-            getParsingFlags(config)._overflowDayOfYear = true;
-        }
-
-        date = createUTCDate(yearToUse, 0, config._dayOfYear);
-        config._a[MONTH] = date.getUTCMonth();
-        config._a[DATE] = date.getUTCDate();
-    }
-
-    // Default to current date.
-    // * if no year, month, day of month are given, default to today
-    // * if day of month is given, default month and year
-    // * if month is given, default only year
-    // * if year is given, don't default anything
-    for (i = 0; i < 3 && config._a[i] == null; ++i) {
-        config._a[i] = input[i] = currentDate[i];
-    }
-
-    // Zero out whatever was not defaulted, including time
-    for (; i < 7; i++) {
-        config._a[i] = input[i] = (config._a[i] == null) ? (i === 2 ? 1 : 0) : config._a[i];
-    }
-
-    // Check for 24:00:00.000
-    if (config._a[HOUR] === 24 &&
-            config._a[MINUTE] === 0 &&
-            config._a[SECOND] === 0 &&
-            config._a[MILLISECOND] === 0) {
-        config._nextDay = true;
-        config._a[HOUR] = 0;
-    }
-
-    config._d = (config._useUTC ? createUTCDate : createDate).apply(null, input);
-    // Apply timezone offset from input. The actual utcOffset can be changed
-    // with parseZone.
-    if (config._tzm != null) {
-        config._d.setUTCMinutes(config._d.getUTCMinutes() - config._tzm);
-    }
-
-    if (config._nextDay) {
-        config._a[HOUR] = 24;
-    }
-}
-
-function dayOfYearFromWeekInfo(config) {
-    var w, weekYear, week, weekday, dow, doy, temp, weekdayOverflow;
-
-    w = config._w;
-    if (w.GG != null || w.W != null || w.E != null) {
-        dow = 1;
-        doy = 4;
-
-        // TODO: We need to take the current isoWeekYear, but that depends on
-        // how we interpret now (local, utc, fixed offset). So create
-        // a now version of current config (take local/utc/offset flags, and
-        // create now).
-        weekYear = defaults(w.GG, config._a[YEAR], weekOfYear(createLocal(), 1, 4).year);
-        week = defaults(w.W, 1);
-        weekday = defaults(w.E, 1);
-        if (weekday < 1 || weekday > 7) {
-            weekdayOverflow = true;
-        }
-    } else {
-        dow = config._locale._week.dow;
-        doy = config._locale._week.doy;
-
-        var curWeek = weekOfYear(createLocal(), dow, doy);
-
-        weekYear = defaults(w.gg, config._a[YEAR], curWeek.year);
-
-        // Default to current week.
-        week = defaults(w.w, curWeek.week);
-
-        if (w.d != null) {
-            // weekday -- low day numbers are considered next week
-            weekday = w.d;
-            if (weekday < 0 || weekday > 6) {
-                weekdayOverflow = true;
-            }
-        } else if (w.e != null) {
-            // local weekday -- counting starts from begining of week
-            weekday = w.e + dow;
-            if (w.e < 0 || w.e > 6) {
-                weekdayOverflow = true;
-            }
-        } else {
-            // default to begining of week
-            weekday = dow;
-        }
-    }
-    if (week < 1 || week > weeksInYear(weekYear, dow, doy)) {
-        getParsingFlags(config)._overflowWeeks = true;
-    } else if (weekdayOverflow != null) {
-        getParsingFlags(config)._overflowWeekday = true;
-    } else {
-        temp = dayOfYearFromWeeks(weekYear, week, weekday, dow, doy);
-        config._a[YEAR] = temp.year;
-        config._dayOfYear = temp.dayOfYear;
-    }
-}
 
 // constant that refers to the ISO standard
 hooks.ISO_8601 = function () {};
@@ -2708,7 +2751,7 @@ var ordering = ['year', 'quarter', 'month', 'week', 'day', 'hour', 'minute', 'se
 
 function isDurationValid(m) {
     for (var key in m) {
-        if (!(ordering.indexOf(key) !== -1 && (m[key] == null || !isNaN(m[key])))) {
+        if (!(indexOf.call(ordering, key) !== -1 && (m[key] == null || !isNaN(m[key])))) {
             return false;
         }
     }
@@ -2759,7 +2802,7 @@ function Duration (duration) {
     // day when working around DST, we need to store them separately
     this._days = +days +
         weeks * 7;
-    // It is impossible translate months into days without knowing
+    // It is impossible to translate months into days without knowing
     // which months you are are talking about, so we have to store
     // it separately.
     this._months = +months +
@@ -3006,12 +3049,12 @@ function isUtc () {
 }
 
 // ASP.NET json date format regex
-var aspNetRegex = /^(\-)?(?:(\d*)[. ])?(\d+)\:(\d+)(?:\:(\d+)(\.\d*)?)?$/;
+var aspNetRegex = /^(\-|\+)?(?:(\d*)[. ])?(\d+)\:(\d+)(?:\:(\d+)(\.\d*)?)?$/;
 
 // from http://docs.closure-library.googlecode.com/git/closure_goog_date_date.js.source.html
 // somewhat more in line with 4.4.3.2 2004 spec, but allows decimal anywhere
 // and further modified to allow for strings containing both week and day
-var isoRegex = /^(-)?P(?:(-?[0-9,.]*)Y)?(?:(-?[0-9,.]*)M)?(?:(-?[0-9,.]*)W)?(?:(-?[0-9,.]*)D)?(?:T(?:(-?[0-9,.]*)H)?(?:(-?[0-9,.]*)M)?(?:(-?[0-9,.]*)S)?)?$/;
+var isoRegex = /^(-|\+)?P(?:([-+]?[0-9,.]*)Y)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)W)?(?:([-+]?[0-9,.]*)D)?(?:T(?:([-+]?[0-9,.]*)H)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)S)?)?$/;
 
 function createDuration (input, key) {
     var duration = input,
@@ -3045,7 +3088,7 @@ function createDuration (input, key) {
             ms : toInt(absRound(match[MILLISECOND] * 1000)) * sign // the millisecond decimal point is included in the match
         };
     } else if (!!(match = isoRegex.exec(input))) {
-        sign = (match[1] === '-') ? -1 : 1;
+        sign = (match[1] === '-') ? -1 : (match[1] === '+') ? 1 : 1;
         duration = {
             y : parseIso(match[2], sign),
             M : parseIso(match[3], sign),
@@ -3148,14 +3191,14 @@ function addSubtract (mom, duration, isAdding, updateOffset) {
 
     updateOffset = updateOffset == null ? true : updateOffset;
 
-    if (milliseconds) {
-        mom._d.setTime(mom._d.valueOf() + milliseconds * isAdding);
+    if (months) {
+        setMonth(mom, get(mom, 'Month') + months * isAdding);
     }
     if (days) {
         set$1(mom, 'Date', get(mom, 'Date') + days * isAdding);
     }
-    if (months) {
-        setMonth(mom, get(mom, 'Month') + months * isAdding);
+    if (milliseconds) {
+        mom._d.setTime(mom._d.valueOf() + milliseconds * isAdding);
     }
     if (updateOffset) {
         hooks.updateOffset(mom, days || months);
@@ -3265,22 +3308,18 @@ function diff (input, units, asFloat) {
 
     units = normalizeUnits(units);
 
-    if (units === 'year' || units === 'month' || units === 'quarter') {
-        output = monthDiff(this, that);
-        if (units === 'quarter') {
-            output = output / 3;
-        } else if (units === 'year') {
-            output = output / 12;
-        }
-    } else {
-        delta = this - that;
-        output = units === 'second' ? delta / 1e3 : // 1000
-            units === 'minute' ? delta / 6e4 : // 1000 * 60
-            units === 'hour' ? delta / 36e5 : // 1000 * 60 * 60
-            units === 'day' ? (delta - zoneDelta) / 864e5 : // 1000 * 60 * 60 * 24, negate dst
-            units === 'week' ? (delta - zoneDelta) / 6048e5 : // 1000 * 60 * 60 * 24 * 7, negate dst
-            delta;
+    switch (units) {
+        case 'year': output = monthDiff(this, that) / 12; break;
+        case 'month': output = monthDiff(this, that); break;
+        case 'quarter': output = monthDiff(this, that) / 3; break;
+        case 'second': output = (this - that) / 1e3; break; // 1000
+        case 'minute': output = (this - that) / 6e4; break; // 1000 * 60
+        case 'hour': output = (this - that) / 36e5; break; // 1000 * 60 * 60
+        case 'day': output = (this - that - zoneDelta) / 864e5; break; // 1000 * 60 * 60 * 24, negate dst
+        case 'week': output = (this - that - zoneDelta) / 6048e5; break; // 1000 * 60 * 60 * 24 * 7, negate dst
+        default: output = this - that;
     }
+
     return asFloat ? output : absFloor(output);
 }
 
@@ -4258,6 +4297,10 @@ var asWeeks        = makeAs('w');
 var asMonths       = makeAs('M');
 var asYears        = makeAs('y');
 
+function clone$1 () {
+    return createDuration(this);
+}
+
 function get$2 (units) {
     units = normalizeUnits(units);
     return this.isValid() ? this[units + 's']() : NaN;
@@ -4367,6 +4410,10 @@ function humanize (withSuffix) {
 
 var abs$1 = Math.abs;
 
+function sign(x) {
+    return ((x > 0) - (x < 0)) || +x;
+}
+
 function toISOString$1() {
     // for ISO strings we do not use the normal bubbling rules:
     //  * milliseconds bubble up until they become hours
@@ -4401,7 +4448,7 @@ function toISOString$1() {
     var D = days;
     var h = hours;
     var m = minutes;
-    var s = seconds;
+    var s = seconds ? seconds.toFixed(3).replace(/\.?0+$/, '') : '';
     var total = this.asSeconds();
 
     if (!total) {
@@ -4410,15 +4457,19 @@ function toISOString$1() {
         return 'P0D';
     }
 
-    return (total < 0 ? '-' : '') +
-        'P' +
-        (Y ? Y + 'Y' : '') +
-        (M ? M + 'M' : '') +
-        (D ? D + 'D' : '') +
+    var totalSign = total < 0 ? '-' : '';
+    var ymSign = sign(this._months) !== sign(total) ? '-' : '';
+    var daysSign = sign(this._days) !== sign(total) ? '-' : '';
+    var hmsSign = sign(this._milliseconds) !== sign(total) ? '-' : '';
+
+    return totalSign + 'P' +
+        (Y ? ymSign + Y + 'Y' : '') +
+        (M ? ymSign + M + 'M' : '') +
+        (D ? daysSign + D + 'D' : '') +
         ((h || m || s) ? 'T' : '') +
-        (h ? h + 'H' : '') +
-        (m ? m + 'M' : '') +
-        (s ? s + 'S' : '');
+        (h ? hmsSign + h + 'H' : '') +
+        (m ? hmsSign + m + 'M' : '') +
+        (s ? hmsSign + s + 'S' : '');
 }
 
 var proto$2 = Duration.prototype;
@@ -4438,6 +4489,7 @@ proto$2.asMonths       = asMonths;
 proto$2.asYears        = asYears;
 proto$2.valueOf        = valueOf$1;
 proto$2._bubble        = bubble;
+proto$2.clone          = clone$1;
 proto$2.get            = get$2;
 proto$2.milliseconds   = milliseconds;
 proto$2.seconds        = seconds;
@@ -4479,7 +4531,7 @@ addParseToken('x', function (input, array, config) {
 // Side effect imports
 
 
-hooks.version = '2.18.1';
+hooks.version = '2.19.3';
 
 setHookCallback(createLocal);
 
@@ -4506,7 +4558,7 @@ hooks.updateLocale          = updateLocale;
 hooks.locales               = listLocales;
 hooks.weekdaysShort         = listWeekdaysShort;
 hooks.normalizeUnits        = normalizeUnits;
-hooks.relativeTimeRounding = getSetRelativeTimeRounding;
+hooks.relativeTimeRounding  = getSetRelativeTimeRounding;
 hooks.relativeTimeThreshold = getSetRelativeTimeThreshold;
 hooks.calendarFormat        = getCalendarFormat;
 hooks.prototype             = proto;
@@ -4594,7 +4646,7 @@ module.exports = !__webpack_require__(4)(function () {
 /***/ (function(module, exports, __webpack_require__) {
 
 var anObject = __webpack_require__(2);
-var IE8_DOM_DEFINE = __webpack_require__(213);
+var IE8_DOM_DEFINE = __webpack_require__(216);
 var toPrimitive = __webpack_require__(24);
 var dP = Object.defineProperty;
 
@@ -4710,7 +4762,7 @@ __webpack_require__(23).inspectSource = function (it) {
 /***/ (function(module, exports, __webpack_require__) {
 
 // to indexed object, toObject with fallback for non-array-like ES3 strings
-var IObject = __webpack_require__(49);
+var IObject = __webpack_require__(50);
 var defined = __webpack_require__(25);
 module.exports = function (it) {
   return IObject(defined(it));
@@ -4746,12 +4798,12 @@ module.exports = function (NAME, exec) {
 /* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var pIE = __webpack_require__(50);
+var pIE = __webpack_require__(51);
 var createDesc = __webpack_require__(35);
 var toIObject = __webpack_require__(15);
 var toPrimitive = __webpack_require__(24);
 var has = __webpack_require__(12);
-var IE8_DOM_DEFINE = __webpack_require__(213);
+var IE8_DOM_DEFINE = __webpack_require__(216);
 var gOPD = Object.getOwnPropertyDescriptor;
 
 exports.f = __webpack_require__(7) ? gOPD : function getOwnPropertyDescriptor(O, P) {
@@ -4790,8 +4842,8 @@ module.exports = Object.getPrototypeOf || function (O) {
 "use strict";
 
 
-var bind = __webpack_require__(246);
-var isBuffer = __webpack_require__(468);
+var bind = __webpack_require__(249);
+var isBuffer = __webpack_require__(472);
 
 /*global toString:true*/
 
@@ -4997,7 +5049,7 @@ function forEach(obj, fn) {
   }
 
   // Force an array if not already something iterable
-  if (typeof obj !== 'object' && !isArray(obj)) {
+  if (typeof obj !== 'object') {
     /*eslint no-param-reassign:0*/
     obj = [obj];
   }
@@ -5223,7 +5275,7 @@ module.exports = function (KEY, exec) {
 // 5 -> Array#find
 // 6 -> Array#findIndex
 var ctx = __webpack_require__(20);
-var IObject = __webpack_require__(49);
+var IObject = __webpack_require__(50);
 var toObject = __webpack_require__(10);
 var toLength = __webpack_require__(9);
 var asc = __webpack_require__(89);
@@ -5281,11 +5333,11 @@ if (__webpack_require__(7)) {
   var redefineAll = __webpack_require__(44);
   var toInteger = __webpack_require__(26);
   var toLength = __webpack_require__(9);
-  var toIndex = __webpack_require__(238);
+  var toIndex = __webpack_require__(241);
   var toAbsoluteIndex = __webpack_require__(38);
   var toPrimitive = __webpack_require__(24);
   var has = __webpack_require__(12);
-  var classof = __webpack_require__(51);
+  var classof = __webpack_require__(52);
   var isObject = __webpack_require__(5);
   var toObject = __webpack_require__(10);
   var isArrayIter = __webpack_require__(86);
@@ -5303,7 +5355,7 @@ if (__webpack_require__(7)) {
   var $iterDetect = __webpack_require__(61);
   var setSpecies = __webpack_require__(41);
   var arrayFill = __webpack_require__(90);
-  var arrayCopyWithin = __webpack_require__(228);
+  var arrayCopyWithin = __webpack_require__(231);
   var $DP = __webpack_require__(8);
   var $GOPD = __webpack_require__(17);
   var dP = $DP.f;
@@ -5752,10 +5804,10 @@ if (__webpack_require__(7)) {
 /* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var Map = __webpack_require__(233);
+var Map = __webpack_require__(236);
 var $export = __webpack_require__(0);
 var shared = __webpack_require__(55)('metadata');
-var store = shared.store || (shared.store = new (__webpack_require__(236))());
+var store = shared.store || (shared.store = new (__webpack_require__(239))());
 
 var getOrCreateMetadataMap = function (target, targetKey, create) {
   var targetMetadata = store.get(target);
@@ -5811,12 +5863,14 @@ module.exports = {
 
 /* globals __VUE_SSR_CONTEXT__ */
 
-// this module is a runtime utility for cleaner component module output and will
-// be included in the final webpack user bundle
+// IMPORTANT: Do NOT use ES2015 features in this file.
+// This module is a runtime utility for cleaner component module output and will
+// be included in the final webpack user bundle.
 
 module.exports = function normalizeComponent (
   rawScriptExports,
   compiledTemplate,
+  functionalTemplate,
   injectStyles,
   scopeId,
   moduleIdentifier /* server only */
@@ -5840,6 +5894,12 @@ module.exports = function normalizeComponent (
   if (compiledTemplate) {
     options.render = compiledTemplate.render
     options.staticRenderFns = compiledTemplate.staticRenderFns
+    options._compiled = true
+  }
+
+  // functional template
+  if (functionalTemplate) {
+    options.functional = true
   }
 
   // scopedId
@@ -5880,12 +5940,16 @@ module.exports = function normalizeComponent (
     var existing = functional
       ? options.render
       : options.beforeCreate
+
     if (!functional) {
       // inject component registration as beforeCreate hook
       options.beforeCreate = existing
         ? [].concat(existing, hook)
         : [hook]
     } else {
+      // for template-only hot-reload because in that case the render fn doesn't
+      // go through the normalizer
+      options._injectStyles = hook
       // register for functioal component in vue file
       options.render = function renderWithStyleInjection (h, context) {
         hook.call(context)
@@ -5966,7 +6030,7 @@ var meta = module.exports = {
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.14 / 15.2.3.14 Object.keys(O)
-var $keys = __webpack_require__(215);
+var $keys = __webpack_require__(218);
 var enumBugKeys = __webpack_require__(73);
 
 module.exports = Object.keys || function keys(O) {
@@ -6038,7 +6102,7 @@ module.exports = function (index, length) {
 
 // 19.1.2.2 / 15.2.3.5 Object.create(O [, Properties])
 var anObject = __webpack_require__(2);
-var dPs = __webpack_require__(216);
+var dPs = __webpack_require__(219);
 var enumBugKeys = __webpack_require__(73);
 var IE_PROTO = __webpack_require__(72)('IE_PROTO');
 var Empty = function () { /* empty */ };
@@ -6084,7 +6148,7 @@ module.exports = Object.create || function create(O, Properties) {
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.7 / 15.2.3.4 Object.getOwnPropertyNames(O)
-var $keys = __webpack_require__(215);
+var $keys = __webpack_require__(218);
 var hiddenKeys = __webpack_require__(73).concat('length', 'prototype');
 
 exports.f = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
@@ -6128,7 +6192,7 @@ module.exports = function (it, Constructor, name, forbiddenField) {
 /***/ (function(module, exports, __webpack_require__) {
 
 var ctx = __webpack_require__(20);
-var call = __webpack_require__(226);
+var call = __webpack_require__(229);
 var isArrayIter = __webpack_require__(86);
 var anObject = __webpack_require__(2);
 var toLength = __webpack_require__(9);
@@ -6233,7 +6297,8 @@ module.exports = function (it, TYPE) {
 
 
 /***/ }),
-/* 49 */
+/* 49 */,
+/* 50 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // fallback for non-array-like ES3 and non-enumerable old V8 strings
@@ -6245,14 +6310,14 @@ module.exports = Object('z').propertyIsEnumerable(0) ? Object : function (it) {
 
 
 /***/ }),
-/* 50 */
+/* 51 */
 /***/ (function(module, exports) {
 
 exports.f = {}.propertyIsEnumerable;
 
 
 /***/ }),
-/* 51 */
+/* 52 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // getting tag from 19.1.3.6 Object.prototype.toString()
@@ -6281,7 +6346,7 @@ module.exports = function (it) {
 
 
 /***/ }),
-/* 52 */
+/* 53 */
 /***/ (function(module, exports) {
 
 /*
@@ -6363,7 +6428,7 @@ function toComment(sourceMap) {
 
 
 /***/ }),
-/* 53 */
+/* 54 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
@@ -6382,7 +6447,7 @@ if (typeof DEBUG !== 'undefined' && DEBUG) {
   ) }
 }
 
-var listToStyles = __webpack_require__(489)
+var listToStyles = __webpack_require__(494)
 
 /*
 type StyleObject = {
@@ -6584,7 +6649,6 @@ function applyToTag (styleElement, obj) {
 
 
 /***/ }),
-/* 54 */,
 /* 55 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -6993,7 +7057,7 @@ module.exports = function (it) {
 var global = __webpack_require__(3);
 var core = __webpack_require__(23);
 var LIBRARY = __webpack_require__(37);
-var wksExt = __webpack_require__(214);
+var wksExt = __webpack_require__(217);
 var defineProperty = __webpack_require__(8).f;
 module.exports = function (name) {
   var $Symbol = core.Symbol || (core.Symbol = LIBRARY ? {} : global.Symbol || {});
@@ -7315,7 +7379,7 @@ module.exports = function (object, index, value) {
 /* 88 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var classof = __webpack_require__(51);
+var classof = __webpack_require__(52);
 var ITERATOR = __webpack_require__(6)('iterator');
 var Iterators = __webpack_require__(47);
 module.exports = __webpack_require__(23).getIteratorMethod = function (it) {
@@ -7330,7 +7394,7 @@ module.exports = __webpack_require__(23).getIteratorMethod = function (it) {
 /***/ (function(module, exports, __webpack_require__) {
 
 // 9.4.2.3 ArraySpeciesCreate(originalArray, length)
-var speciesConstructor = __webpack_require__(352);
+var speciesConstructor = __webpack_require__(356);
 
 module.exports = function (original, length) {
   return new (speciesConstructor(original))(length);
@@ -7366,7 +7430,7 @@ module.exports = function fill(value /* , start = 0, end = @length */) {
 "use strict";
 
 var addToUnscopables = __webpack_require__(34);
-var step = __webpack_require__(229);
+var step = __webpack_require__(232);
 var Iterators = __webpack_require__(47);
 var toIObject = __webpack_require__(15);
 
@@ -7605,7 +7669,7 @@ var fails = __webpack_require__(4);
 var anInstance = __webpack_require__(42);
 var toInteger = __webpack_require__(26);
 var toLength = __webpack_require__(9);
-var toIndex = __webpack_require__(238);
+var toIndex = __webpack_require__(241);
 var gOPN = __webpack_require__(40).f;
 var dP = __webpack_require__(8).f;
 var arrayFill = __webpack_require__(90);
@@ -7880,7 +7944,7 @@ exports[DATA_VIEW] = $DataView;
 /* WEBPACK VAR INJECTION */(function(process) {
 
 var utils = __webpack_require__(19);
-var normalizeHeaderName = __webpack_require__(471);
+var normalizeHeaderName = __webpack_require__(474);
 
 var DEFAULT_CONTENT_TYPE = {
   'Content-Type': 'application/x-www-form-urlencoded'
@@ -7896,10 +7960,10 @@ function getDefaultAdapter() {
   var adapter;
   if (typeof XMLHttpRequest !== 'undefined') {
     // For browsers use XHR adapter
-    adapter = __webpack_require__(247);
+    adapter = __webpack_require__(251);
   } else if (typeof process !== 'undefined') {
     // For node use HTTP adapter
-    adapter = __webpack_require__(247);
+    adapter = __webpack_require__(251);
   }
   return adapter;
 }
@@ -7970,7 +8034,7 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 
 module.exports = defaults;
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(470)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(250)))
 
 /***/ }),
 /* 97 */
@@ -8205,7 +8269,7 @@ var ar = moment.defineLocale('ar', {
         yy : pluralize('y')
     },
     preparse: function (string) {
-        return string.replace(/\u200f/g, '').replace(/[١٢٣٤٥٦٧٨٩٠]/g, function (match) {
+        return string.replace(/[١٢٣٤٥٦٧٨٩٠]/g, function (match) {
             return numberMap[match];
         }).replace(/،/g, ',');
     },
@@ -8466,7 +8530,7 @@ var arLy = moment.defineLocale('ar-ly', {
         yy : pluralize('y')
     },
     preparse: function (string) {
-        return string.replace(/\u200f/g, '').replace(/،/g, ',');
+        return string.replace(/،/g, ',');
     },
     postformat: function (string) {
         return string.replace(/\d/g, function (match) {
@@ -9072,6 +9136,70 @@ return bg;
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
+//! locale : Bambara [bm]
+//! author : Estelle Comment : https://github.com/estellecomment
+
+;(function (global, factory) {
+    true ? factory(__webpack_require__(1)) :
+   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   factory(global.moment)
+}(this, (function (moment) { 'use strict';
+
+// Language contact person : Abdoufata Kane : https://github.com/abdoufata
+
+var bm = moment.defineLocale('bm', {
+    months : 'Zanwuyekalo_Fewuruyekalo_Marisikalo_Awirilikalo_Mɛkalo_Zuwɛnkalo_Zuluyekalo_Utikalo_Sɛtanburukalo_ɔkutɔburukalo_Nowanburukalo_Desanburukalo'.split('_'),
+    monthsShort : 'Zan_Few_Mar_Awi_Mɛ_Zuw_Zul_Uti_Sɛt_ɔku_Now_Des'.split('_'),
+    weekdays : 'Kari_Ntɛnɛn_Tarata_Araba_Alamisa_Juma_Sibiri'.split('_'),
+    weekdaysShort : 'Kar_Ntɛ_Tar_Ara_Ala_Jum_Sib'.split('_'),
+    weekdaysMin : 'Ka_Nt_Ta_Ar_Al_Ju_Si'.split('_'),
+    longDateFormat : {
+        LT : 'HH:mm',
+        LTS : 'HH:mm:ss',
+        L : 'DD/MM/YYYY',
+        LL : 'MMMM [tile] D [san] YYYY',
+        LLL : 'MMMM [tile] D [san] YYYY [lɛrɛ] HH:mm',
+        LLLL : 'dddd MMMM [tile] D [san] YYYY [lɛrɛ] HH:mm'
+    },
+    calendar : {
+        sameDay : '[Bi lɛrɛ] LT',
+        nextDay : '[Sini lɛrɛ] LT',
+        nextWeek : 'dddd [don lɛrɛ] LT',
+        lastDay : '[Kunu lɛrɛ] LT',
+        lastWeek : 'dddd [tɛmɛnen lɛrɛ] LT',
+        sameElse : 'L'
+    },
+    relativeTime : {
+        future : '%s kɔnɔ',
+        past : 'a bɛ %s bɔ',
+        s : 'sanga dama dama',
+        m : 'miniti kelen',
+        mm : 'miniti %d',
+        h : 'lɛrɛ kelen',
+        hh : 'lɛrɛ %d',
+        d : 'tile kelen',
+        dd : 'tile %d',
+        M : 'kalo kelen',
+        MM : 'kalo %d',
+        y : 'san kelen',
+        yy : 'san %d'
+    },
+    week : {
+        dow : 1, // Monday is the first day of the week.
+        doy : 4  // The week that contains Jan 4th is the first week of the year.
+    }
+});
+
+return bm;
+
+})));
+
+
+/***/ }),
+/* 110 */
+/***/ (function(module, exports, __webpack_require__) {
+
+//! moment.js locale configuration
 //! locale : Bengali [bn]
 //! author : Kaushik Gandhi : https://github.com/kaushikgandhi
 
@@ -9192,7 +9320,7 @@ return bn;
 
 
 /***/ }),
-/* 110 */
+/* 111 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -9316,7 +9444,7 @@ return bo;
 
 
 /***/ }),
-/* 111 */
+/* 112 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -9429,7 +9557,7 @@ return br;
 
 
 /***/ }),
-/* 112 */
+/* 113 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -9577,7 +9705,7 @@ return bs;
 
 
 /***/ }),
-/* 113 */
+/* 114 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -9601,17 +9729,17 @@ var ca = moment.defineLocale('ca', {
     monthsParseExact : true,
     weekdays : 'diumenge_dilluns_dimarts_dimecres_dijous_divendres_dissabte'.split('_'),
     weekdaysShort : 'dg._dl._dt._dc._dj._dv._ds.'.split('_'),
-    weekdaysMin : 'Dg_Dl_Dt_Dc_Dj_Dv_Ds'.split('_'),
+    weekdaysMin : 'dg_dl_dt_dc_dj_dv_ds'.split('_'),
     weekdaysParseExact : true,
     longDateFormat : {
         LT : 'H:mm',
         LTS : 'H:mm:ss',
         L : 'DD/MM/YYYY',
-        LL : '[el] D MMMM [de] YYYY',
+        LL : 'D MMMM [de] YYYY',
         ll : 'D MMM YYYY',
-        LLL : '[el] D MMMM [de] YYYY [a les] H:mm',
+        LLL : 'D MMMM [de] YYYY [a les] H:mm',
         lll : 'D MMM YYYY, H:mm',
-        LLLL : '[el] dddd D MMMM [de] YYYY [a les] H:mm',
+        LLLL : 'dddd D MMMM [de] YYYY [a les] H:mm',
         llll : 'ddd D MMM YYYY, H:mm'
     },
     calendar : {
@@ -9670,7 +9798,7 @@ return ca;
 
 
 /***/ }),
-/* 114 */
+/* 115 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -9847,7 +9975,7 @@ return cs;
 
 
 /***/ }),
-/* 115 */
+/* 116 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -9915,7 +10043,7 @@ return cv;
 
 
 /***/ }),
-/* 116 */
+/* 117 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10001,7 +10129,7 @@ return cy;
 
 
 /***/ }),
-/* 117 */
+/* 118 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10024,7 +10152,7 @@ var da = moment.defineLocale('da', {
     longDateFormat : {
         LT : 'HH:mm',
         LTS : 'HH:mm:ss',
-        L : 'DD/MM/YYYY',
+        L : 'DD.MM.YYYY',
         LL : 'D. MMMM YYYY',
         LLL : 'D. MMMM YYYY HH:mm',
         LLLL : 'dddd [d.] D. MMMM YYYY [kl.] HH:mm'
@@ -10066,7 +10194,7 @@ return da;
 
 
 /***/ }),
-/* 118 */
+/* 119 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10098,7 +10226,7 @@ function processRelativeTime(number, withoutSuffix, key, isFuture) {
 
 var de = moment.defineLocale('de', {
     months : 'Januar_Februar_März_April_Mai_Juni_Juli_August_September_Oktober_November_Dezember'.split('_'),
-    monthsShort : 'Jan._Febr._Mrz._Apr._Mai_Jun._Jul._Aug._Sept._Okt._Nov._Dez.'.split('_'),
+    monthsShort : 'Jan._Feb._März_Apr._Mai_Juni_Juli_Aug._Sep._Okt._Nov._Dez.'.split('_'),
     monthsParseExact : true,
     weekdays : 'Sonntag_Montag_Dienstag_Mittwoch_Donnerstag_Freitag_Samstag'.split('_'),
     weekdaysShort : 'So._Mo._Di._Mi._Do._Fr._Sa.'.split('_'),
@@ -10149,7 +10277,7 @@ return de;
 
 
 /***/ }),
-/* 119 */
+/* 120 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10182,7 +10310,7 @@ function processRelativeTime(number, withoutSuffix, key, isFuture) {
 
 var deAt = moment.defineLocale('de-at', {
     months : 'Jänner_Februar_März_April_Mai_Juni_Juli_August_September_Oktober_November_Dezember'.split('_'),
-    monthsShort : 'Jän._Febr._Mrz._Apr._Mai_Jun._Jul._Aug._Sept._Okt._Nov._Dez.'.split('_'),
+    monthsShort : 'Jän._Feb._März_Apr._Mai_Juni_Juli_Aug._Sep._Okt._Nov._Dez.'.split('_'),
     monthsParseExact : true,
     weekdays : 'Sonntag_Montag_Dienstag_Mittwoch_Donnerstag_Freitag_Samstag'.split('_'),
     weekdaysShort : 'So._Mo._Di._Mi._Do._Fr._Sa.'.split('_'),
@@ -10233,7 +10361,7 @@ return deAt;
 
 
 /***/ }),
-/* 120 */
+/* 121 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10265,7 +10393,7 @@ function processRelativeTime(number, withoutSuffix, key, isFuture) {
 
 var deCh = moment.defineLocale('de-ch', {
     months : 'Januar_Februar_März_April_Mai_Juni_Juli_August_September_Oktober_November_Dezember'.split('_'),
-    monthsShort : 'Jan._Febr._März_April_Mai_Juni_Juli_Aug._Sept._Okt._Nov._Dez.'.split('_'),
+    monthsShort : 'Jan._Feb._März_Apr._Mai_Juni_Juli_Aug._Sep._Okt._Nov._Dez.'.split('_'),
     monthsParseExact : true,
     weekdays : 'Sonntag_Montag_Dienstag_Mittwoch_Donnerstag_Freitag_Samstag'.split('_'),
     weekdaysShort : 'So_Mo_Di_Mi_Do_Fr_Sa'.split('_'),
@@ -10316,7 +10444,7 @@ return deCh;
 
 
 /***/ }),
-/* 121 */
+/* 122 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10421,7 +10549,7 @@ return dv;
 
 
 /***/ }),
-/* 122 */
+/* 123 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10445,7 +10573,7 @@ var el = moment.defineLocale('el', {
     months : function (momentToFormat, format) {
         if (!momentToFormat) {
             return this._monthsNominativeEl;
-        } else if (/D/.test(format.substring(0, format.indexOf('MMMM')))) { // if there is a day number before 'MMMM'
+        } else if (typeof format === 'string' && /D/.test(format.substring(0, format.indexOf('MMMM')))) { // if there is a day number before 'MMMM'
             return this._monthsGenitiveEl[momentToFormat.month()];
         } else {
             return this._monthsNominativeEl[momentToFormat.month()];
@@ -10526,7 +10654,7 @@ return el;
 
 
 /***/ }),
-/* 123 */
+/* 124 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10598,7 +10726,7 @@ return enAu;
 
 
 /***/ }),
-/* 124 */
+/* 125 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10666,7 +10794,7 @@ return enCa;
 
 
 /***/ }),
-/* 125 */
+/* 126 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10738,7 +10866,7 @@ return enGb;
 
 
 /***/ }),
-/* 126 */
+/* 127 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10810,7 +10938,7 @@ return enIe;
 
 
 /***/ }),
-/* 127 */
+/* 128 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10882,7 +11010,7 @@ return enNz;
 
 
 /***/ }),
-/* 128 */
+/* 129 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10960,7 +11088,7 @@ return eo;
 
 
 /***/ }),
-/* 129 */
+/* 130 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -10977,6 +11105,9 @@ return eo;
 var monthsShortDot = 'ene._feb._mar._abr._may._jun._jul._ago._sep._oct._nov._dic.'.split('_');
 var monthsShort = 'ene_feb_mar_abr_may_jun_jul_ago_sep_oct_nov_dic'.split('_');
 
+var monthsParse = [/^ene/i, /^feb/i, /^mar/i, /^abr/i, /^may/i, /^jun/i, /^jul/i, /^ago/i, /^sep/i, /^oct/i, /^nov/i, /^dic/i];
+var monthsRegex = /^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|ene\.?|feb\.?|mar\.?|abr\.?|may\.?|jun\.?|jul\.?|ago\.?|sep\.?|oct\.?|nov\.?|dic\.?)/i;
+
 var es = moment.defineLocale('es', {
     months : 'enero_febrero_marzo_abril_mayo_junio_julio_agosto_septiembre_octubre_noviembre_diciembre'.split('_'),
     monthsShort : function (m, format) {
@@ -10988,7 +11119,13 @@ var es = moment.defineLocale('es', {
             return monthsShortDot[m.month()];
         }
     },
-    monthsParseExact : true,
+    monthsRegex : monthsRegex,
+    monthsShortRegex : monthsRegex,
+    monthsStrictRegex : /^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i,
+    monthsShortStrictRegex : /^(ene\.?|feb\.?|mar\.?|abr\.?|may\.?|jun\.?|jul\.?|ago\.?|sep\.?|oct\.?|nov\.?|dic\.?)/i,
+    monthsParse : monthsParse,
+    longMonthsParse : monthsParse,
+    shortMonthsParse : monthsParse,
     weekdays : 'domingo_lunes_martes_miércoles_jueves_viernes_sábado'.split('_'),
     weekdaysShort : 'dom._lun._mar._mié._jue._vie._sáb.'.split('_'),
     weekdaysMin : 'do_lu_ma_mi_ju_vi_sá'.split('_'),
@@ -11048,7 +11185,7 @@ return es;
 
 
 /***/ }),
-/* 130 */
+/* 131 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11064,6 +11201,9 @@ return es;
 var monthsShortDot = 'ene._feb._mar._abr._may._jun._jul._ago._sep._oct._nov._dic.'.split('_');
 var monthsShort = 'ene_feb_mar_abr_may_jun_jul_ago_sep_oct_nov_dic'.split('_');
 
+var monthsParse = [/^ene/i, /^feb/i, /^mar/i, /^abr/i, /^may/i, /^jun/i, /^jul/i, /^ago/i, /^sep/i, /^oct/i, /^nov/i, /^dic/i];
+var monthsRegex = /^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|ene\.?|feb\.?|mar\.?|abr\.?|may\.?|jun\.?|jul\.?|ago\.?|sep\.?|oct\.?|nov\.?|dic\.?)/i;
+
 var esDo = moment.defineLocale('es-do', {
     months : 'enero_febrero_marzo_abril_mayo_junio_julio_agosto_septiembre_octubre_noviembre_diciembre'.split('_'),
     monthsShort : function (m, format) {
@@ -11075,7 +11215,13 @@ var esDo = moment.defineLocale('es-do', {
             return monthsShortDot[m.month()];
         }
     },
-    monthsParseExact : true,
+    monthsRegex: monthsRegex,
+    monthsShortRegex: monthsRegex,
+    monthsStrictRegex: /^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i,
+    monthsShortStrictRegex: /^(ene\.?|feb\.?|mar\.?|abr\.?|may\.?|jun\.?|jul\.?|ago\.?|sep\.?|oct\.?|nov\.?|dic\.?)/i,
+    monthsParse: monthsParse,
+    longMonthsParse: monthsParse,
+    shortMonthsParse: monthsParse,
     weekdays : 'domingo_lunes_martes_miércoles_jueves_viernes_sábado'.split('_'),
     weekdaysShort : 'dom._lun._mar._mié._jue._vie._sáb.'.split('_'),
     weekdaysMin : 'do_lu_ma_mi_ju_vi_sá'.split('_'),
@@ -11135,7 +11281,95 @@ return esDo;
 
 
 /***/ }),
-/* 131 */
+/* 132 */
+/***/ (function(module, exports, __webpack_require__) {
+
+//! moment.js locale configuration
+//! locale : Spanish (United States) [es-us]
+//! author : bustta : https://github.com/bustta
+
+;(function (global, factory) {
+    true ? factory(__webpack_require__(1)) :
+   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   factory(global.moment)
+}(this, (function (moment) { 'use strict';
+
+
+var monthsShortDot = 'ene._feb._mar._abr._may._jun._jul._ago._sep._oct._nov._dic.'.split('_');
+var monthsShort = 'ene_feb_mar_abr_may_jun_jul_ago_sep_oct_nov_dic'.split('_');
+
+var esUs = moment.defineLocale('es-us', {
+    months : 'enero_febrero_marzo_abril_mayo_junio_julio_agosto_septiembre_octubre_noviembre_diciembre'.split('_'),
+    monthsShort : function (m, format) {
+        if (!m) {
+            return monthsShortDot;
+        } else if (/-MMM-/.test(format)) {
+            return monthsShort[m.month()];
+        } else {
+            return monthsShortDot[m.month()];
+        }
+    },
+    monthsParseExact : true,
+    weekdays : 'domingo_lunes_martes_miércoles_jueves_viernes_sábado'.split('_'),
+    weekdaysShort : 'dom._lun._mar._mié._jue._vie._sáb.'.split('_'),
+    weekdaysMin : 'do_lu_ma_mi_ju_vi_sá'.split('_'),
+    weekdaysParseExact : true,
+    longDateFormat : {
+        LT : 'H:mm',
+        LTS : 'H:mm:ss',
+        L : 'MM/DD/YYYY',
+        LL : 'MMMM [de] D [de] YYYY',
+        LLL : 'MMMM [de] D [de] YYYY H:mm',
+        LLLL : 'dddd, MMMM [de] D [de] YYYY H:mm'
+    },
+    calendar : {
+        sameDay : function () {
+            return '[hoy a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+        },
+        nextDay : function () {
+            return '[mañana a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+        },
+        nextWeek : function () {
+            return 'dddd [a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+        },
+        lastDay : function () {
+            return '[ayer a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+        },
+        lastWeek : function () {
+            return '[el] dddd [pasado a la' + ((this.hours() !== 1) ? 's' : '') + '] LT';
+        },
+        sameElse : 'L'
+    },
+    relativeTime : {
+        future : 'en %s',
+        past : 'hace %s',
+        s : 'unos segundos',
+        m : 'un minuto',
+        mm : '%d minutos',
+        h : 'una hora',
+        hh : '%d horas',
+        d : 'un día',
+        dd : '%d días',
+        M : 'un mes',
+        MM : '%d meses',
+        y : 'un año',
+        yy : '%d años'
+    },
+    dayOfMonthOrdinalParse : /\d{1,2}º/,
+    ordinal : '%dº',
+    week : {
+        dow : 0, // Sunday is the first day of the week.
+        doy : 6  // The week that contains Jan 1st is the first week of the year.
+    }
+});
+
+return esUs;
+
+})));
+
+
+/***/ }),
+/* 133 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11220,7 +11454,7 @@ return et;
 
 
 /***/ }),
-/* 132 */
+/* 134 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11291,7 +11525,7 @@ return eu;
 
 
 /***/ }),
-/* 133 */
+/* 135 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11403,7 +11637,7 @@ return fa;
 
 
 /***/ }),
-/* 134 */
+/* 136 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11515,7 +11749,7 @@ return fi;
 
 
 /***/ }),
-/* 135 */
+/* 137 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11580,7 +11814,7 @@ return fo;
 
 
 /***/ }),
-/* 136 */
+/* 138 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11668,7 +11902,7 @@ return fr;
 
 
 /***/ }),
-/* 137 */
+/* 139 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11747,7 +11981,7 @@ return frCa;
 
 
 /***/ }),
-/* 138 */
+/* 140 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11830,7 +12064,7 @@ return frCh;
 
 
 /***/ }),
-/* 139 */
+/* 141 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11910,7 +12144,7 @@ return fy;
 
 
 /***/ }),
-/* 140 */
+/* 142 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -11991,7 +12225,7 @@ return gd;
 
 
 /***/ }),
-/* 141 */
+/* 143 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -12073,7 +12307,7 @@ return gl;
 
 
 /***/ }),
-/* 142 */
+/* 144 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -12200,7 +12434,136 @@ return gomLatn;
 
 
 /***/ }),
-/* 143 */
+/* 145 */
+/***/ (function(module, exports, __webpack_require__) {
+
+//! moment.js locale configuration
+//! locale : Gujarati [gu]
+//! author : Kaushik Thanki : https://github.com/Kaushik1987
+
+;(function (global, factory) {
+    true ? factory(__webpack_require__(1)) :
+   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   factory(global.moment)
+}(this, (function (moment) { 'use strict';
+
+
+var symbolMap = {
+        '1': '૧',
+        '2': '૨',
+        '3': '૩',
+        '4': '૪',
+        '5': '૫',
+        '6': '૬',
+        '7': '૭',
+        '8': '૮',
+        '9': '૯',
+        '0': '૦'
+    };
+var numberMap = {
+        '૧': '1',
+        '૨': '2',
+        '૩': '3',
+        '૪': '4',
+        '૫': '5',
+        '૬': '6',
+        '૭': '7',
+        '૮': '8',
+        '૯': '9',
+        '૦': '0'
+    };
+
+var gu = moment.defineLocale('gu', {
+    months: 'જાન્યુઆરી_ફેબ્રુઆરી_માર્ચ_એપ્રિલ_મે_જૂન_જુલાઈ_ઑગસ્ટ_સપ્ટેમ્બર_ઑક્ટ્બર_નવેમ્બર_ડિસેમ્બર'.split('_'),
+    monthsShort: 'જાન્યુ._ફેબ્રુ._માર્ચ_એપ્રિ._મે_જૂન_જુલા._ઑગ._સપ્ટે._ઑક્ટ્._નવે._ડિસે.'.split('_'),
+    monthsParseExact: true,
+    weekdays: 'રવિવાર_સોમવાર_મંગળવાર_બુધ્વાર_ગુરુવાર_શુક્રવાર_શનિવાર'.split('_'),
+    weekdaysShort: 'રવિ_સોમ_મંગળ_બુધ્_ગુરુ_શુક્ર_શનિ'.split('_'),
+    weekdaysMin: 'ર_સો_મં_બુ_ગુ_શુ_શ'.split('_'),
+    longDateFormat: {
+        LT: 'A h:mm વાગ્યે',
+        LTS: 'A h:mm:ss વાગ્યે',
+        L: 'DD/MM/YYYY',
+        LL: 'D MMMM YYYY',
+        LLL: 'D MMMM YYYY, A h:mm વાગ્યે',
+        LLLL: 'dddd, D MMMM YYYY, A h:mm વાગ્યે'
+    },
+    calendar: {
+        sameDay: '[આજ] LT',
+        nextDay: '[કાલે] LT',
+        nextWeek: 'dddd, LT',
+        lastDay: '[ગઇકાલે] LT',
+        lastWeek: '[પાછલા] dddd, LT',
+        sameElse: 'L'
+    },
+    relativeTime: {
+        future: '%s મા',
+        past: '%s પેહલા',
+        s: 'અમુક પળો',
+        m: 'એક મિનિટ',
+        mm: '%d મિનિટ',
+        h: 'એક કલાક',
+        hh: '%d કલાક',
+        d: 'એક દિવસ',
+        dd: '%d દિવસ',
+        M: 'એક મહિનો',
+        MM: '%d મહિનો',
+        y: 'એક વર્ષ',
+        yy: '%d વર્ષ'
+    },
+    preparse: function (string) {
+        return string.replace(/[૧૨૩૪૫૬૭૮૯૦]/g, function (match) {
+            return numberMap[match];
+        });
+    },
+    postformat: function (string) {
+        return string.replace(/\d/g, function (match) {
+            return symbolMap[match];
+        });
+    },
+    // Gujarati notation for meridiems are quite fuzzy in practice. While there exists
+    // a rigid notion of a 'Pahar' it is not used as rigidly in modern Gujarati.
+    meridiemParse: /રાત|બપોર|સવાર|સાંજ/,
+    meridiemHour: function (hour, meridiem) {
+        if (hour === 12) {
+            hour = 0;
+        }
+        if (meridiem === 'રાત') {
+            return hour < 4 ? hour : hour + 12;
+        } else if (meridiem === 'સવાર') {
+            return hour;
+        } else if (meridiem === 'બપોર') {
+            return hour >= 10 ? hour : hour + 12;
+        } else if (meridiem === 'સાંજ') {
+            return hour + 12;
+        }
+    },
+    meridiem: function (hour, minute, isLower) {
+        if (hour < 4) {
+            return 'રાત';
+        } else if (hour < 10) {
+            return 'સવાર';
+        } else if (hour < 17) {
+            return 'બપોર';
+        } else if (hour < 20) {
+            return 'સાંજ';
+        } else {
+            return 'રાત';
+        }
+    },
+    week: {
+        dow: 0, // Sunday is the first day of the week.
+        doy: 6 // The week that contains Jan 1st is the first week of the year.
+    }
+});
+
+return gu;
+
+})));
+
+
+/***/ }),
+/* 146 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -12304,7 +12667,7 @@ return he;
 
 
 /***/ }),
-/* 144 */
+/* 147 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -12433,7 +12796,7 @@ return hi;
 
 
 /***/ }),
-/* 145 */
+/* 148 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -12583,7 +12946,7 @@ return hr;
 
 
 /***/ }),
-/* 146 */
+/* 149 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -12599,8 +12962,7 @@ return hr;
 
 var weekEndings = 'vasárnap hétfőn kedden szerdán csütörtökön pénteken szombaton'.split(' ');
 function translate(number, withoutSuffix, key, isFuture) {
-    var num = number,
-        suffix;
+    var num = number;
     switch (key) {
         case 's':
             return (isFuture || withoutSuffix) ? 'néhány másodperc' : 'néhány másodperce';
@@ -12697,7 +13059,7 @@ return hu;
 
 
 /***/ }),
-/* 147 */
+/* 150 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -12797,7 +13159,7 @@ return hyAm;
 
 
 /***/ }),
-/* 148 */
+/* 151 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -12885,7 +13247,7 @@ return id;
 
 
 /***/ }),
-/* 149 */
+/* 152 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13017,7 +13379,7 @@ return is;
 
 
 /***/ }),
-/* 150 */
+/* 153 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13092,7 +13454,7 @@ return it;
 
 
 /***/ }),
-/* 151 */
+/* 154 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13177,7 +13539,7 @@ return ja;
 
 
 /***/ }),
-/* 152 */
+/* 155 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13265,7 +13627,7 @@ return jv;
 
 
 /***/ }),
-/* 153 */
+/* 156 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13359,7 +13721,7 @@ return ka;
 
 
 /***/ }),
-/* 154 */
+/* 157 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13451,7 +13813,7 @@ return kk;
 
 
 /***/ }),
-/* 155 */
+/* 158 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13514,7 +13876,7 @@ return km;
 
 
 /***/ }),
-/* 156 */
+/* 159 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13645,7 +14007,7 @@ return kn;
 
 
 /***/ }),
-/* 157 */
+/* 160 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13702,8 +14064,22 @@ var ko = moment.defineLocale('ko', {
         y : '일 년',
         yy : '%d년'
     },
-    dayOfMonthOrdinalParse : /\d{1,2}일/,
-    ordinal : '%d일',
+    dayOfMonthOrdinalParse : /\d{1,2}(일|월|주)/,
+    ordinal : function (number, period) {
+        switch (period) {
+            case 'd':
+            case 'D':
+            case 'DDD':
+                return number + '일';
+            case 'M':
+                return number + '월';
+            case 'w':
+            case 'W':
+                return number + '주';
+            default:
+                return number;
+        }
+    },
     meridiemParse : /오전|오후/,
     isPM : function (token) {
         return token === '오후';
@@ -13719,7 +14095,7 @@ return ko;
 
 
 /***/ }),
-/* 158 */
+/* 161 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13812,7 +14188,7 @@ return ky;
 
 
 /***/ }),
-/* 159 */
+/* 162 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -13954,7 +14330,7 @@ return lb;
 
 
 /***/ }),
-/* 160 */
+/* 163 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14029,7 +14405,7 @@ return lo;
 
 
 /***/ }),
-/* 161 */
+/* 164 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14151,7 +14527,7 @@ return lt;
 
 
 /***/ }),
-/* 162 */
+/* 165 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14253,7 +14629,7 @@ return lv;
 
 
 /***/ }),
-/* 163 */
+/* 166 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14369,7 +14745,7 @@ return me;
 
 
 /***/ }),
-/* 164 */
+/* 167 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14438,7 +14814,7 @@ return mi;
 
 
 /***/ }),
-/* 165 */
+/* 168 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14533,7 +14909,7 @@ return mk;
 
 
 /***/ }),
-/* 166 */
+/* 169 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14619,7 +14995,7 @@ return ml;
 
 
 /***/ }),
-/* 167 */
+/* 170 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14783,7 +15159,7 @@ return mr;
 
 
 /***/ }),
-/* 168 */
+/* 171 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14870,7 +15246,7 @@ return ms;
 
 
 /***/ }),
-/* 169 */
+/* 172 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -14958,7 +15334,7 @@ return msMy;
 
 
 /***/ }),
-/* 170 */
+/* 173 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15059,7 +15435,7 @@ return my;
 
 
 /***/ }),
-/* 171 */
+/* 174 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15127,7 +15503,7 @@ return nb;
 
 
 /***/ }),
-/* 172 */
+/* 175 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15255,7 +15631,7 @@ return ne;
 
 
 /***/ }),
-/* 173 */
+/* 176 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15299,7 +15675,7 @@ var nl = moment.defineLocale('nl', {
 
     weekdays : 'zondag_maandag_dinsdag_woensdag_donderdag_vrijdag_zaterdag'.split('_'),
     weekdaysShort : 'zo._ma._di._wo._do._vr._za.'.split('_'),
-    weekdaysMin : 'Zo_Ma_Di_Wo_Do_Vr_Za'.split('_'),
+    weekdaysMin : 'zo_ma_di_wo_do_vr_za'.split('_'),
     weekdaysParseExact : true,
     longDateFormat : {
         LT : 'HH:mm',
@@ -15348,7 +15724,7 @@ return nl;
 
 
 /***/ }),
-/* 174 */
+/* 177 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15392,7 +15768,7 @@ var nlBe = moment.defineLocale('nl-be', {
 
     weekdays : 'zondag_maandag_dinsdag_woensdag_donderdag_vrijdag_zaterdag'.split('_'),
     weekdaysShort : 'zo._ma._di._wo._do._vr._za.'.split('_'),
-    weekdaysMin : 'Zo_Ma_Di_Wo_Do_Vr_Za'.split('_'),
+    weekdaysMin : 'zo_ma_di_wo_do_vr_za'.split('_'),
     weekdaysParseExact : true,
     longDateFormat : {
         LT : 'HH:mm',
@@ -15441,7 +15817,7 @@ return nlBe;
 
 
 /***/ }),
-/* 175 */
+/* 178 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15506,7 +15882,7 @@ return nn;
 
 
 /***/ }),
-/* 176 */
+/* 179 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15635,7 +16011,7 @@ return paIn;
 
 
 /***/ }),
-/* 177 */
+/* 180 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15702,7 +16078,24 @@ var pl = moment.defineLocale('pl', {
     calendar : {
         sameDay: '[Dziś o] LT',
         nextDay: '[Jutro o] LT',
-        nextWeek: '[W] dddd [o] LT',
+        nextWeek: function () {
+            switch (this.day()) {
+                case 0:
+                    return '[W niedzielę o] LT';
+
+                case 2:
+                    return '[We wtorek o] LT';
+
+                case 3:
+                    return '[W środę o] LT';
+
+                case 6:
+                    return '[W sobotę o] LT';
+
+                default:
+                    return '[W] dddd [o] LT';
+            }
+        },
         lastDay: '[Wczoraj o] LT',
         lastWeek: function () {
             switch (this.day()) {
@@ -15747,7 +16140,7 @@ return pl;
 
 
 /***/ }),
-/* 178 */
+/* 181 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15762,9 +16155,9 @@ return pl;
 
 
 var pt = moment.defineLocale('pt', {
-    months : 'Janeiro_Fevereiro_Março_Abril_Maio_Junho_Julho_Agosto_Setembro_Outubro_Novembro_Dezembro'.split('_'),
-    monthsShort : 'Jan_Fev_Mar_Abr_Mai_Jun_Jul_Ago_Set_Out_Nov_Dez'.split('_'),
-    weekdays : 'Domingo_Segunda-Feira_Terça-Feira_Quarta-Feira_Quinta-Feira_Sexta-Feira_Sábado'.split('_'),
+    months : 'janeiro_fevereiro_março_abril_maio_junho_julho_agosto_setembro_outubro_novembro_dezembro'.split('_'),
+    monthsShort : 'jan_fev_mar_abr_mai_jun_jul_ago_set_out_nov_dez'.split('_'),
+    weekdays : 'Domingo_Segunda-feira_Terça-feira_Quarta-feira_Quinta-feira_Sexta-feira_Sábado'.split('_'),
     weekdaysShort : 'Dom_Seg_Ter_Qua_Qui_Sex_Sáb'.split('_'),
     weekdaysMin : 'Do_2ª_3ª_4ª_5ª_6ª_Sá'.split('_'),
     weekdaysParseExact : true,
@@ -15817,7 +16210,7 @@ return pt;
 
 
 /***/ }),
-/* 179 */
+/* 182 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15832,8 +16225,8 @@ return pt;
 
 
 var ptBr = moment.defineLocale('pt-br', {
-    months : 'Janeiro_Fevereiro_Março_Abril_Maio_Junho_Julho_Agosto_Setembro_Outubro_Novembro_Dezembro'.split('_'),
-    monthsShort : 'Jan_Fev_Mar_Abr_Mai_Jun_Jul_Ago_Set_Out_Nov_Dez'.split('_'),
+    months : 'janeiro_fevereiro_março_abril_maio_junho_julho_agosto_setembro_outubro_novembro_dezembro'.split('_'),
+    monthsShort : 'jan_fev_mar_abr_mai_jun_jul_ago_set_out_nov_dez'.split('_'),
     weekdays : 'Domingo_Segunda-feira_Terça-feira_Quarta-feira_Quinta-feira_Sexta-feira_Sábado'.split('_'),
     weekdaysShort : 'Dom_Seg_Ter_Qua_Qui_Sex_Sáb'.split('_'),
     weekdaysMin : 'Do_2ª_3ª_4ª_5ª_6ª_Sá'.split('_'),
@@ -15862,6 +16255,7 @@ var ptBr = moment.defineLocale('pt-br', {
         future : 'em %s',
         past : '%s atrás',
         s : 'poucos segundos',
+        ss : '%d segundos',
         m : 'um minuto',
         mm : '%d minutos',
         h : 'uma hora',
@@ -15883,7 +16277,7 @@ return ptBr;
 
 
 /***/ }),
-/* 180 */
+/* 183 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -15963,7 +16357,7 @@ return ro;
 
 
 /***/ }),
-/* 181 */
+/* 184 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -16141,7 +16535,7 @@ var ru = moment.defineLocale('ru', {
     },
     week : {
         dow : 1, // Monday is the first day of the week.
-        doy : 7  // The week that contains Jan 1st is the first week of the year.
+        doy : 4  // The week that contains Jan 4th is the first week of the year.
     }
 });
 
@@ -16151,7 +16545,7 @@ return ru;
 
 
 /***/ }),
-/* 182 */
+/* 185 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -16254,7 +16648,7 @@ return sd;
 
 
 /***/ }),
-/* 183 */
+/* 186 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -16320,7 +16714,7 @@ return se;
 
 
 /***/ }),
-/* 184 */
+/* 187 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -16396,7 +16790,7 @@ return si;
 
 
 /***/ }),
-/* 185 */
+/* 188 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -16551,7 +16945,7 @@ return sk;
 
 
 /***/ }),
-/* 186 */
+/* 189 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -16718,7 +17112,7 @@ return sl;
 
 
 /***/ }),
-/* 187 */
+/* 190 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -16793,7 +17187,7 @@ return sq;
 
 
 /***/ }),
-/* 188 */
+/* 191 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -16908,7 +17302,7 @@ return sr;
 
 
 /***/ }),
-/* 189 */
+/* 192 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17023,7 +17417,7 @@ return srCyrl;
 
 
 /***/ }),
-/* 190 */
+/* 193 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17117,7 +17511,7 @@ return ss;
 
 
 /***/ }),
-/* 191 */
+/* 194 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17191,7 +17585,7 @@ return sv;
 
 
 /***/ }),
-/* 192 */
+/* 195 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17255,7 +17649,7 @@ return sw;
 
 
 /***/ }),
-/* 193 */
+/* 196 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17390,7 +17784,7 @@ return ta;
 
 
 /***/ }),
-/* 194 */
+/* 197 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17484,7 +17878,7 @@ return te;
 
 
 /***/ }),
-/* 195 */
+/* 198 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17557,7 +17951,7 @@ return tet;
 
 
 /***/ }),
-/* 196 */
+/* 199 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17629,7 +18023,7 @@ return th;
 
 
 /***/ }),
-/* 197 */
+/* 200 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17696,7 +18090,7 @@ return tlPh;
 
 
 /***/ }),
-/* 198 */
+/* 201 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17821,7 +18215,7 @@ return tlh;
 
 
 /***/ }),
-/* 199 */
+/* 202 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -17874,9 +18268,9 @@ var tr = moment.defineLocale('tr', {
     calendar : {
         sameDay : '[bugün saat] LT',
         nextDay : '[yarın saat] LT',
-        nextWeek : '[haftaya] dddd [saat] LT',
+        nextWeek : '[gelecek] dddd [saat] LT',
         lastDay : '[dün] LT',
-        lastWeek : '[geçen hafta] dddd [saat] LT',
+        lastWeek : '[geçen] dddd [saat] LT',
         sameElse : 'L'
     },
     relativeTime : {
@@ -17916,7 +18310,7 @@ return tr;
 
 
 /***/ }),
-/* 200 */
+/* 203 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18012,7 +18406,7 @@ return tzl;
 
 
 /***/ }),
-/* 201 */
+/* 204 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18075,7 +18469,7 @@ return tzm;
 
 
 /***/ }),
-/* 202 */
+/* 205 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18138,7 +18532,7 @@ return tzmLatn;
 
 
 /***/ }),
-/* 203 */
+/* 206 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18294,7 +18688,7 @@ return uk;
 
 
 /***/ }),
-/* 204 */
+/* 207 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18398,7 +18792,7 @@ return ur;
 
 
 /***/ }),
-/* 205 */
+/* 208 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18461,7 +18855,7 @@ return uz;
 
 
 /***/ }),
-/* 206 */
+/* 209 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18524,7 +18918,7 @@ return uzLatn;
 
 
 /***/ }),
-/* 207 */
+/* 210 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18608,7 +19002,7 @@ return vi;
 
 
 /***/ }),
-/* 208 */
+/* 211 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18681,7 +19075,7 @@ return xPseudo;
 
 
 /***/ }),
-/* 209 */
+/* 212 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18746,7 +19140,7 @@ return yo;
 
 
 /***/ }),
-/* 210 */
+/* 213 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18862,7 +19256,7 @@ return zhCn;
 
 
 /***/ }),
-/* 211 */
+/* 214 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -18972,7 +19366,7 @@ return zhHk;
 
 
 /***/ }),
-/* 212 */
+/* 215 */
 /***/ (function(module, exports, __webpack_require__) {
 
 //! moment.js locale configuration
@@ -19081,7 +19475,7 @@ return zhTw;
 
 
 /***/ }),
-/* 213 */
+/* 216 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = !__webpack_require__(7) && !__webpack_require__(4)(function () {
@@ -19090,14 +19484,14 @@ module.exports = !__webpack_require__(7) && !__webpack_require__(4)(function () 
 
 
 /***/ }),
-/* 214 */
+/* 217 */
 /***/ (function(module, exports, __webpack_require__) {
 
 exports.f = __webpack_require__(6);
 
 
 /***/ }),
-/* 215 */
+/* 218 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var has = __webpack_require__(12);
@@ -19120,7 +19514,7 @@ module.exports = function (object, names) {
 
 
 /***/ }),
-/* 216 */
+/* 219 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var dP = __webpack_require__(8);
@@ -19139,7 +19533,7 @@ module.exports = __webpack_require__(7) ? Object.defineProperties : function def
 
 
 /***/ }),
-/* 217 */
+/* 220 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // fallback for IE11 buggy Object.getOwnPropertyNames with iframe and window
@@ -19164,7 +19558,7 @@ module.exports.f = function getOwnPropertyNames(it) {
 
 
 /***/ }),
-/* 218 */
+/* 221 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19172,9 +19566,9 @@ module.exports.f = function getOwnPropertyNames(it) {
 // 19.1.2.1 Object.assign(target, source, ...)
 var getKeys = __webpack_require__(33);
 var gOPS = __webpack_require__(57);
-var pIE = __webpack_require__(50);
+var pIE = __webpack_require__(51);
 var toObject = __webpack_require__(10);
-var IObject = __webpack_require__(49);
+var IObject = __webpack_require__(50);
 var $assign = Object.assign;
 
 // should work with symbols and should have deterministic property order (V8 bug)
@@ -19205,7 +19599,7 @@ module.exports = !$assign || __webpack_require__(4)(function () {
 
 
 /***/ }),
-/* 219 */
+/* 222 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19237,7 +19631,7 @@ module.exports = Function.bind || function bind(that /* , ...args */) {
 
 
 /***/ }),
-/* 220 */
+/* 223 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $parseInt = __webpack_require__(3).parseInt;
@@ -19252,7 +19646,7 @@ module.exports = $parseInt(ws + '08') !== 8 || $parseInt(ws + '0x16') !== 22 ? f
 
 
 /***/ }),
-/* 221 */
+/* 224 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $parseFloat = __webpack_require__(3).parseFloat;
@@ -19266,7 +19660,7 @@ module.exports = 1 / $parseFloat(__webpack_require__(76) + '-0') !== -Infinity ?
 
 
 /***/ }),
-/* 222 */
+/* 225 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var cof = __webpack_require__(21);
@@ -19277,7 +19671,7 @@ module.exports = function (it, msg) {
 
 
 /***/ }),
-/* 223 */
+/* 226 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.1.2.3 Number.isInteger(number)
@@ -19289,7 +19683,7 @@ module.exports = function isInteger(it) {
 
 
 /***/ }),
-/* 224 */
+/* 227 */
 /***/ (function(module, exports) {
 
 // 20.2.2.20 Math.log1p(x)
@@ -19299,7 +19693,7 @@ module.exports = Math.log1p || function log1p(x) {
 
 
 /***/ }),
-/* 225 */
+/* 228 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.16 Math.fround(x)
@@ -19328,7 +19722,7 @@ module.exports = Math.fround || function fround(x) {
 
 
 /***/ }),
-/* 226 */
+/* 229 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // call something on iterator step with safe closing on error
@@ -19346,12 +19740,12 @@ module.exports = function (iterator, fn, value, entries) {
 
 
 /***/ }),
-/* 227 */
+/* 230 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var aFunction = __webpack_require__(11);
 var toObject = __webpack_require__(10);
-var IObject = __webpack_require__(49);
+var IObject = __webpack_require__(50);
 var toLength = __webpack_require__(9);
 
 module.exports = function (that, callbackfn, aLen, memo, isRight) {
@@ -19380,7 +19774,7 @@ module.exports = function (that, callbackfn, aLen, memo, isRight) {
 
 
 /***/ }),
-/* 228 */
+/* 231 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19413,7 +19807,7 @@ module.exports = [].copyWithin || function copyWithin(target /* = 0 */, start /*
 
 
 /***/ }),
-/* 229 */
+/* 232 */
 /***/ (function(module, exports) {
 
 module.exports = function (done, value) {
@@ -19422,7 +19816,7 @@ module.exports = function (done, value) {
 
 
 /***/ }),
-/* 230 */
+/* 233 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 21.2.5.3 get RegExp.prototype.flags()
@@ -19433,7 +19827,7 @@ if (__webpack_require__(7) && /./g.flags != 'g') __webpack_require__(8).f(RegExp
 
 
 /***/ }),
-/* 231 */
+/* 234 */
 /***/ (function(module, exports) {
 
 module.exports = function (exec) {
@@ -19446,7 +19840,7 @@ module.exports = function (exec) {
 
 
 /***/ }),
-/* 232 */
+/* 235 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var newPromiseCapability = __webpack_require__(94);
@@ -19460,12 +19854,12 @@ module.exports = function (C, x) {
 
 
 /***/ }),
-/* 233 */
+/* 236 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var strong = __webpack_require__(234);
+var strong = __webpack_require__(237);
 var validate = __webpack_require__(48);
 var MAP = 'Map';
 
@@ -19486,7 +19880,7 @@ module.exports = __webpack_require__(65)(MAP, function (get) {
 
 
 /***/ }),
-/* 234 */
+/* 237 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19498,7 +19892,7 @@ var ctx = __webpack_require__(20);
 var anInstance = __webpack_require__(42);
 var forOf = __webpack_require__(43);
 var $iterDefine = __webpack_require__(82);
-var step = __webpack_require__(229);
+var step = __webpack_require__(232);
 var setSpecies = __webpack_require__(41);
 var DESCRIPTORS = __webpack_require__(7);
 var fastKey = __webpack_require__(32).fastKey;
@@ -19637,12 +20031,12 @@ module.exports = {
 
 
 /***/ }),
-/* 235 */
+/* 238 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var strong = __webpack_require__(234);
+var strong = __webpack_require__(237);
 var validate = __webpack_require__(48);
 var SET = 'Set';
 
@@ -19658,7 +20052,7 @@ module.exports = __webpack_require__(65)(SET, function (get) {
 
 
 /***/ }),
-/* 236 */
+/* 239 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19666,8 +20060,8 @@ module.exports = __webpack_require__(65)(SET, function (get) {
 var each = __webpack_require__(28)(0);
 var redefine = __webpack_require__(14);
 var meta = __webpack_require__(32);
-var assign = __webpack_require__(218);
-var weak = __webpack_require__(237);
+var assign = __webpack_require__(221);
+var weak = __webpack_require__(240);
 var isObject = __webpack_require__(5);
 var fails = __webpack_require__(4);
 var validate = __webpack_require__(48);
@@ -19724,7 +20118,7 @@ if (fails(function () { return new $WeakMap().set((Object.freeze || Object)(tmp)
 
 
 /***/ }),
-/* 237 */
+/* 240 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19816,7 +20210,7 @@ module.exports = {
 
 
 /***/ }),
-/* 238 */
+/* 241 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/ecma262/#sec-toindex
@@ -19832,7 +20226,7 @@ module.exports = function (it) {
 
 
 /***/ }),
-/* 239 */
+/* 242 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // all object keys, includes non-enumerable and symbols
@@ -19848,7 +20242,7 @@ module.exports = Reflect && Reflect.ownKeys || function ownKeys(it) {
 
 
 /***/ }),
-/* 240 */
+/* 243 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19894,7 +20288,7 @@ module.exports = flattenIntoArray;
 
 
 /***/ }),
-/* 241 */
+/* 244 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/tc39/proposal-string-pad-start-end
@@ -19916,12 +20310,12 @@ module.exports = function (that, maxLength, fillString, left) {
 
 
 /***/ }),
-/* 242 */
+/* 245 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var getKeys = __webpack_require__(33);
 var toIObject = __webpack_require__(15);
-var isEnum = __webpack_require__(50).f;
+var isEnum = __webpack_require__(51).f;
 module.exports = function (isEntries) {
   return function (it) {
     var O = toIObject(it);
@@ -19938,12 +20332,12 @@ module.exports = function (isEntries) {
 
 
 /***/ }),
-/* 243 */
+/* 246 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/DavidBruant/Map-Set.prototype.toJSON
-var classof = __webpack_require__(51);
-var from = __webpack_require__(244);
+var classof = __webpack_require__(52);
+var from = __webpack_require__(247);
 module.exports = function (NAME) {
   return function toJSON() {
     if (classof(this) != NAME) throw TypeError(NAME + "#toJSON isn't generic");
@@ -19953,7 +20347,7 @@ module.exports = function (NAME) {
 
 
 /***/ }),
-/* 244 */
+/* 247 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var forOf = __webpack_require__(43);
@@ -19966,7 +20360,7 @@ module.exports = function (iter, ITERATOR) {
 
 
 /***/ }),
-/* 245 */
+/* 248 */
 /***/ (function(module, exports) {
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -19990,7 +20384,7 @@ module.exports = Math.scale || function scale(x, inLow, inHigh, outLow, outHigh)
 
 
 /***/ }),
-/* 246 */
+/* 249 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20008,19 +20402,20 @@ module.exports = function bind(fn, thisArg) {
 
 
 /***/ }),
-/* 247 */
+/* 250 */,
+/* 251 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var utils = __webpack_require__(19);
-var settle = __webpack_require__(472);
-var buildURL = __webpack_require__(474);
-var parseHeaders = __webpack_require__(475);
-var isURLSameOrigin = __webpack_require__(476);
-var createError = __webpack_require__(248);
-var btoa = (typeof window !== 'undefined' && window.btoa && window.btoa.bind(window)) || __webpack_require__(477);
+var settle = __webpack_require__(475);
+var buildURL = __webpack_require__(477);
+var parseHeaders = __webpack_require__(478);
+var isURLSameOrigin = __webpack_require__(479);
+var createError = __webpack_require__(252);
+var btoa = (typeof window !== 'undefined' && window.btoa && window.btoa.bind(window)) || __webpack_require__(480);
 
 module.exports = function xhrAdapter(config) {
   return new Promise(function dispatchXhrRequest(resolve, reject) {
@@ -20080,7 +20475,7 @@ module.exports = function xhrAdapter(config) {
       var responseData = !config.responseType || config.responseType === 'text' ? request.responseText : request.response;
       var response = {
         data: responseData,
-        // IE sends 1223 instead of 204 (https://github.com/mzabriskie/axios/issues/201)
+        // IE sends 1223 instead of 204 (https://github.com/axios/axios/issues/201)
         status: request.status === 1223 ? 204 : request.status,
         statusText: request.status === 1223 ? 'No Content' : request.statusText,
         headers: responseHeaders,
@@ -20117,7 +20512,7 @@ module.exports = function xhrAdapter(config) {
     // This is only done if running in a standard browser environment.
     // Specifically not if we're in a web worker, or react-native.
     if (utils.isStandardBrowserEnv()) {
-      var cookies = __webpack_require__(478);
+      var cookies = __webpack_require__(481);
 
       // Add xsrf header
       var xsrfValue = (config.withCredentials || isURLSameOrigin(config.url)) && config.xsrfCookieName ?
@@ -20195,13 +20590,13 @@ module.exports = function xhrAdapter(config) {
 
 
 /***/ }),
-/* 248 */
+/* 252 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var enhanceError = __webpack_require__(473);
+var enhanceError = __webpack_require__(476);
 
 /**
  * Create an Error with the specified message, config, error code, request and response.
@@ -20220,7 +20615,7 @@ module.exports = function createError(message, config, code, request, response) 
 
 
 /***/ }),
-/* 249 */
+/* 253 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20232,7 +20627,7 @@ module.exports = function isCancel(value) {
 
 
 /***/ }),
-/* 250 */
+/* 254 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20258,13 +20653,13 @@ module.exports = Cancel;
 
 
 /***/ }),
-/* 251 */,
-/* 252 */
+/* 255 */,
+/* 256 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 /**
-  * vue-router v2.7.0
+  * vue-router v3.0.1
   * (c) 2017 Evan You
   * @license MIT
   */
@@ -20352,14 +20747,26 @@ var View = {
       }
     }
 
-    // also regiseter instance in prepatch hook
+    // also register instance in prepatch hook
     // in case the same component instance is reused across different routes
     ;(data.hook || (data.hook = {})).prepatch = function (_, vnode) {
       matched.instances[name] = vnode.componentInstance;
     };
 
     // resolve props
-    data.props = resolveProps(route, matched.props && matched.props[name]);
+    var propsToPass = data.props = resolveProps(route, matched.props && matched.props[name]);
+    if (propsToPass) {
+      // clone to prevent mutation
+      propsToPass = data.props = extend({}, propsToPass);
+      // pass non-declared props as attrs
+      var attrs = data.attrs = data.attrs || {};
+      for (var key in propsToPass) {
+        if (!component.props || !(key in component.props)) {
+          attrs[key] = propsToPass[key];
+          delete propsToPass[key];
+        }
+      }
+    }
 
     return h(component, data, children)
   }
@@ -20384,6 +20791,13 @@ function resolveProps (route, config) {
         );
       }
   }
+}
+
+function extend (to, from) {
+  for (var key in from) {
+    to[key] = from[key];
+  }
+  return to
 }
 
 /*  */
@@ -20417,8 +20831,7 @@ function resolveQuery (
     parsedQuery = {};
   }
   for (var key in extraQuery) {
-    var val = extraQuery[key];
-    parsedQuery[key] = Array.isArray(val) ? val.slice() : val;
+    parsedQuery[key] = extraQuery[key];
   }
   return parsedQuery
 }
@@ -20495,12 +20908,18 @@ function createRoute (
   router
 ) {
   var stringifyQuery$$1 = router && router.options.stringifyQuery;
+
+  var query = location.query || {};
+  try {
+    query = clone(query);
+  } catch (e) {}
+
   var route = {
     name: location.name || (record && record.name),
     meta: (record && record.meta) || {},
     path: location.path || '/',
     hash: location.hash || '',
-    query: location.query || {},
+    query: query,
     params: location.params || {},
     fullPath: getFullPath(location, stringifyQuery$$1),
     matched: record ? formatMatch(record) : []
@@ -20509,6 +20928,20 @@ function createRoute (
     route.redirectedFrom = getFullPath(redirectedFrom, stringifyQuery$$1);
   }
   return Object.freeze(route)
+}
+
+function clone (value) {
+  if (Array.isArray(value)) {
+    return value.map(clone)
+  } else if (value && typeof value === 'object') {
+    var res = {};
+    for (var key in value) {
+      res[key] = clone(value[key]);
+    }
+    return res
+  } else {
+    return value
+  }
 }
 
 // the starting route that represents the initial state
@@ -20564,6 +20997,8 @@ function isObjectEqual (a, b) {
   if ( a === void 0 ) a = {};
   if ( b === void 0 ) b = {};
 
+  // handle null value #1566
+  if (!a || !b) { return a === b }
   var aKeys = Object.keys(a);
   var bKeys = Object.keys(b);
   if (aKeys.length !== bKeys.length) {
@@ -20743,7 +21178,7 @@ function findAnchor (children) {
 var _Vue;
 
 function install (Vue) {
-  if (install.installed) { return }
+  if (install.installed && _Vue === Vue) { return }
   install.installed = true;
 
   _Vue = Vue;
@@ -20865,14 +21300,14 @@ function cleanPath (path) {
   return path.replace(/\/\//g, '/')
 }
 
-var index$1 = Array.isArray || function (arr) {
+var isarray = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
 /**
  * Expose `pathToRegexp`.
  */
-var index = pathToRegexp;
+var pathToRegexp_1 = pathToRegexp;
 var parse_1 = parse;
 var compile_1 = compile;
 var tokensToFunction_1 = tokensToFunction;
@@ -21049,7 +21484,7 @@ function tokensToFunction (tokens) {
         }
       }
 
-      if (index$1(value)) {
+      if (isarray(value)) {
         if (!token.repeat) {
           throw new TypeError('Expected "' + token.name + '" to not repeat, but received `' + JSON.stringify(value) + '`')
         }
@@ -21200,7 +21635,7 @@ function stringToRegexp (path, keys, options) {
  * @return {!RegExp}
  */
 function tokensToRegExp (tokens, keys, options) {
-  if (!index$1(keys)) {
+  if (!isarray(keys)) {
     options = /** @type {!Object} */ (keys || options);
     keys = [];
   }
@@ -21276,7 +21711,7 @@ function tokensToRegExp (tokens, keys, options) {
  * @return {!RegExp}
  */
 function pathToRegexp (path, keys, options) {
-  if (!index$1(keys)) {
+  if (!isarray(keys)) {
     options = /** @type {!Object} */ (keys || options);
     keys = [];
   }
@@ -21287,20 +21722,21 @@ function pathToRegexp (path, keys, options) {
     return regexpToRegexp(path, /** @type {!Array} */ (keys))
   }
 
-  if (index$1(path)) {
+  if (isarray(path)) {
     return arrayToRegexp(/** @type {!Array} */ (path), /** @type {!Array} */ (keys), options)
   }
 
   return stringToRegexp(/** @type {string} */ (path), /** @type {!Array} */ (keys), options)
 }
 
-index.parse = parse_1;
-index.compile = compile_1;
-index.tokensToFunction = tokensToFunction_1;
-index.tokensToRegExp = tokensToRegExp_1;
+pathToRegexp_1.parse = parse_1;
+pathToRegexp_1.compile = compile_1;
+pathToRegexp_1.tokensToFunction = tokensToFunction_1;
+pathToRegexp_1.tokensToRegExp = tokensToRegExp_1;
 
 /*  */
 
+// $flow-disable-line
 var regexpCompileCache = Object.create(null);
 
 function fillParams (
@@ -21311,7 +21747,7 @@ function fillParams (
   try {
     var filler =
       regexpCompileCache[path] ||
-      (regexpCompileCache[path] = index.compile(path));
+      (regexpCompileCache[path] = pathToRegexp_1.compile(path));
     return filler(params || {}, { pretty: true })
   } catch (e) {
     if (true) {
@@ -21331,7 +21767,9 @@ function createRouteMap (
 ) {
   // the path list is used to control path matching priority
   var pathList = oldPathList || [];
+  // $flow-disable-line
   var pathMap = oldPathMap || Object.create(null);
+  // $flow-disable-line
   var nameMap = oldNameMap || Object.create(null);
 
   routes.forEach(function (route) {
@@ -21373,8 +21811,12 @@ function addRouteRecord (
     );
   }
 
-  var normalizedPath = normalizePath(path, parent);
   var pathToRegexpOptions = route.pathToRegexpOptions || {};
+  var normalizedPath = normalizePath(
+    path,
+    parent,
+    pathToRegexpOptions.strict
+  );
 
   if (typeof route.caseSensitive === 'boolean') {
     pathToRegexpOptions.sensitive = route.caseSensitive;
@@ -21462,9 +21904,9 @@ function addRouteRecord (
 }
 
 function compileRouteRegex (path, pathToRegexpOptions) {
-  var regex = index(path, [], pathToRegexpOptions);
+  var regex = pathToRegexp_1(path, [], pathToRegexpOptions);
   if (true) {
-    var keys = {};
+    var keys = Object.create(null);
     regex.keys.forEach(function (key) {
       warn(!keys[key.name], ("Duplicate param keys in route with path: \"" + path + "\""));
       keys[key.name] = true;
@@ -21473,8 +21915,8 @@ function compileRouteRegex (path, pathToRegexpOptions) {
   return regex
 }
 
-function normalizePath (path, parent) {
-  path = path.replace(/\/$/, '');
+function normalizePath (path, parent, strict) {
+  if (!strict) { path = path.replace(/\/$/, ''); }
   if (path[0] === '/') { return path }
   if (parent == null) { return path }
   return cleanPath(((parent.path) + "/" + path))
@@ -21746,6 +22188,8 @@ function resolveRecordPath (path, record) {
 var positionStore = Object.create(null);
 
 function setupScroll () {
+  // Fix for #1585 for Firefox
+  window.history.replaceState({ key: getStateKey() }, '');
   window.addEventListener('popstate', function (e) {
     saveScrollPosition();
     if (e.state && e.state.key) {
@@ -21777,25 +22221,21 @@ function handleScroll (
   router.app.$nextTick(function () {
     var position = getScrollPosition();
     var shouldScroll = behavior(to, from, isPop ? position : null);
+
     if (!shouldScroll) {
       return
     }
-    var isObject = typeof shouldScroll === 'object';
-    if (isObject && typeof shouldScroll.selector === 'string') {
-      var el = document.querySelector(shouldScroll.selector);
-      if (el) {
-        var offset = shouldScroll.offset && typeof shouldScroll.offset === 'object' ? shouldScroll.offset : {};
-        offset = normalizeOffset(offset);
-        position = getElementPosition(el, offset);
-      } else if (isValidPosition(shouldScroll)) {
-        position = normalizePosition(shouldScroll);
-      }
-    } else if (isObject && isValidPosition(shouldScroll)) {
-      position = normalizePosition(shouldScroll);
-    }
 
-    if (position) {
-      window.scrollTo(position.x, position.y);
+    if (typeof shouldScroll.then === 'function') {
+      shouldScroll.then(function (shouldScroll) {
+        scrollToPosition((shouldScroll), position);
+      }).catch(function (err) {
+        if (true) {
+          assert(false, err.toString());
+        }
+      });
+    } else {
+      scrollToPosition(shouldScroll, position);
     }
   });
 }
@@ -21847,6 +22287,26 @@ function normalizeOffset (obj) {
 
 function isNumber (v) {
   return typeof v === 'number'
+}
+
+function scrollToPosition (shouldScroll, position) {
+  var isObject = typeof shouldScroll === 'object';
+  if (isObject && typeof shouldScroll.selector === 'string') {
+    var el = document.querySelector(shouldScroll.selector);
+    if (el) {
+      var offset = shouldScroll.offset && typeof shouldScroll.offset === 'object' ? shouldScroll.offset : {};
+      offset = normalizeOffset(offset);
+      position = getElementPosition(el, offset);
+    } else if (isValidPosition(shouldScroll)) {
+      position = normalizePosition(shouldScroll);
+    }
+  } else if (isObject && isValidPosition(shouldScroll)) {
+    position = normalizePosition(shouldScroll);
+  }
+
+  if (position) {
+    window.scrollTo(position.x, position.y);
+  }
 }
 
 /*  */
@@ -21944,7 +22404,7 @@ function resolveAsyncComponents (matched) {
         pending++;
 
         var resolve = once(function (resolvedDef) {
-          if (resolvedDef.__esModule && resolvedDef.default) {
+          if (isESModule(resolvedDef)) {
             resolvedDef = resolvedDef.default;
           }
           // save resolved on async factory in case it's used elsewhere
@@ -22008,6 +22468,14 @@ function flatMapComponents (
 
 function flatten (arr) {
   return Array.prototype.concat.apply([], arr)
+}
+
+var hasSymbol =
+  typeof Symbol === 'function' &&
+  typeof Symbol.toStringTag === 'symbol';
+
+function isESModule (obj) {
+  return obj.__esModule || (hasSymbol && obj[Symbol.toStringTag] === 'Module')
 }
 
 // in Webpack 2, require.ensure now also returns a Promise
@@ -22338,9 +22806,18 @@ var HTML5History = (function (History$$1) {
       setupScroll();
     }
 
+    var initLocation = getLocation(this.base);
     window.addEventListener('popstate', function (e) {
       var current = this$1.current;
-      this$1.transitionTo(getLocation(this$1.base), function (route) {
+
+      // Avoiding first `popstate` event dispatched in some browsers but first
+      // history route not updated since async guard at the same time.
+      var location = getLocation(this$1.base);
+      if (this$1.current === START && location === initLocation) {
+        return
+      }
+
+      this$1.transitionTo(location, function (route) {
         if (expectScroll) {
           handleScroll(router, route, current, true);
         }
@@ -22424,26 +22901,50 @@ var HashHistory = (function (History$$1) {
   HashHistory.prototype.setupListeners = function setupListeners () {
     var this$1 = this;
 
-    window.addEventListener('hashchange', function () {
+    var router = this.router;
+    var expectScroll = router.options.scrollBehavior;
+    var supportsScroll = supportsPushState && expectScroll;
+
+    if (supportsScroll) {
+      setupScroll();
+    }
+
+    window.addEventListener(supportsPushState ? 'popstate' : 'hashchange', function () {
+      var current = this$1.current;
       if (!ensureSlash()) {
         return
       }
       this$1.transitionTo(getHash(), function (route) {
-        replaceHash(route.fullPath);
+        if (supportsScroll) {
+          handleScroll(this$1.router, route, current, true);
+        }
+        if (!supportsPushState) {
+          replaceHash(route.fullPath);
+        }
       });
     });
   };
 
   HashHistory.prototype.push = function push (location, onComplete, onAbort) {
+    var this$1 = this;
+
+    var ref = this;
+    var fromRoute = ref.current;
     this.transitionTo(location, function (route) {
       pushHash(route.fullPath);
+      handleScroll(this$1.router, route, fromRoute, false);
       onComplete && onComplete(route);
     }, onAbort);
   };
 
   HashHistory.prototype.replace = function replace (location, onComplete, onAbort) {
+    var this$1 = this;
+
+    var ref = this;
+    var fromRoute = ref.current;
     this.transitionTo(location, function (route) {
       replaceHash(route.fullPath);
+      handleScroll(this$1.router, route, fromRoute, false);
       onComplete && onComplete(route);
     }, onAbort);
   };
@@ -22493,15 +22994,27 @@ function getHash () {
   return index === -1 ? '' : href.slice(index + 1)
 }
 
-function pushHash (path) {
-  window.location.hash = path;
-}
-
-function replaceHash (path) {
+function getUrl (path) {
   var href = window.location.href;
   var i = href.indexOf('#');
   var base = i >= 0 ? href.slice(0, i) : href;
-  window.location.replace((base + "#" + path));
+  return (base + "#" + path)
+}
+
+function pushHash (path) {
+  if (supportsPushState) {
+    pushState(getUrl(path));
+  } else {
+    window.location.hash = path;
+  }
+}
+
+function replaceHash (path) {
+  if (supportsPushState) {
+    replaceState(getUrl(path));
+  } else {
+    window.location.replace(getUrl(path));
+  }
 }
 
 /*  */
@@ -22603,7 +23116,7 @@ var VueRouter = function VueRouter (options) {
   }
 };
 
-var prototypeAccessors = { currentRoute: {} };
+var prototypeAccessors = { currentRoute: { configurable: true } };
 
 VueRouter.prototype.match = function match (
   raw,
@@ -22761,7 +23274,7 @@ function createHref (base, fullPath, mode) {
 }
 
 VueRouter.install = install;
-VueRouter.version = '2.7.0';
+VueRouter.version = '3.0.1';
 
 if (inBrowser && window.Vue) {
   window.Vue.use(VueRouter);
@@ -22771,29 +23284,37 @@ if (inBrowser && window.Vue) {
 
 
 /***/ }),
-/* 253 */
+/* 257 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
 function injectStyle (ssrContext) {
   if (disposed) return
-  __webpack_require__(487)
+  __webpack_require__(492)
 }
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(490),
-  /* template */
-  __webpack_require__(502),
-  /* styles */
-  injectStyle,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(495)
+/* template */
+var __vue_template__ = __webpack_require__(507)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = injectStyle
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/CatIndex.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] CatIndex.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/CatIndex.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -22802,10 +23323,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-564b89c9", Component.options)
+    hotAPI.createRecord("data-v-4676f9d3", Component.options)
   } else {
-    hotAPI.reload("data-v-564b89c9", Component.options)
-  }
+    hotAPI.reload("data-v-4676f9d3", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -22815,29 +23336,29 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 254 */
+/* 258 */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(255);
-module.exports = __webpack_require__(524);
+__webpack_require__(259);
+module.exports = __webpack_require__(529);
 
 
 /***/ }),
-/* 255 */
+/* 259 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__bootstrap__ = __webpack_require__(256);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_vue__ = __webpack_require__(251);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__bootstrap__ = __webpack_require__(260);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_vue__ = __webpack_require__(255);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_vue___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_vue__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_vue_router__ = __webpack_require__(252);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__routes__ = __webpack_require__(486);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__components_Navigation__ = __webpack_require__(513);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_vue_router__ = __webpack_require__(256);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__routes__ = __webpack_require__(491);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__components_Navigation__ = __webpack_require__(518);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__components_Navigation___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_4__components_Navigation__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__components_Login__ = __webpack_require__(516);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__components_Login__ = __webpack_require__(521);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__components_Login___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_5__components_Login__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_6__components_CatIndex__ = __webpack_require__(253);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_6__components_CatIndex__ = __webpack_require__(257);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_6__components_CatIndex___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_6__components_CatIndex__);
 
 /**
@@ -22896,14 +23417,14 @@ var app = new __WEBPACK_IMPORTED_MODULE_1_vue___default.a({
 });
 
 /***/ }),
-/* 256 */
+/* 260 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_babel_polyfill__ = __webpack_require__(259);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_babel_polyfill__ = __webpack_require__(263);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_babel_polyfill___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_babel_polyfill__);
 
-window._ = __webpack_require__(257);
+window._ = __webpack_require__(261);
 
 window.moment = __webpack_require__(1);
 window.momentDateFormat = "DD.MM.YYYY";
@@ -22920,9 +23441,9 @@ window.publicPhotosPath = '/images/';
  */
 
 try {
-  window.$ = window.jQuery = __webpack_require__(464);
+  window.$ = window.jQuery = __webpack_require__(468);
 
-  __webpack_require__(465);
+  __webpack_require__(469);
 } catch (e) {}
 
 /**
@@ -22931,7 +23452,7 @@ try {
  * CSRF token as a header based on the value of the "XSRF" token cookie.
  */
 
-window.axios = __webpack_require__(466);
+window.axios = __webpack_require__(470);
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
@@ -22965,7 +23486,7 @@ if (token) {
 // });
 
 /***/ }),
-/* 257 */
+/* 261 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, module) {var __WEBPACK_AMD_DEFINE_RESULT__;/**
@@ -40036,9 +40557,9 @@ if (token) {
 
     // Define as an anonymous module so, through path mapping, it can be
     // referenced as the "underscore" module.
-    !(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+    !(__WEBPACK_AMD_DEFINE_RESULT__ = (function() {
       return _;
-    }.call(exports, __webpack_require__, exports, module),
+    }).call(exports, __webpack_require__, exports, module),
 				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
   }
   // Check for `exports` after `define` in case a build optimizer adds it.
@@ -40054,10 +40575,10 @@ if (token) {
   }
 }.call(this));
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(54), __webpack_require__(97)(module)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(49), __webpack_require__(97)(module)))
 
 /***/ }),
-/* 258 */
+/* 262 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var map = {
@@ -40083,214 +40604,220 @@ var map = {
 	"./be.js": 107,
 	"./bg": 108,
 	"./bg.js": 108,
-	"./bn": 109,
-	"./bn.js": 109,
-	"./bo": 110,
-	"./bo.js": 110,
-	"./br": 111,
-	"./br.js": 111,
-	"./bs": 112,
-	"./bs.js": 112,
-	"./ca": 113,
-	"./ca.js": 113,
-	"./cs": 114,
-	"./cs.js": 114,
-	"./cv": 115,
-	"./cv.js": 115,
-	"./cy": 116,
-	"./cy.js": 116,
-	"./da": 117,
-	"./da.js": 117,
-	"./de": 118,
-	"./de-at": 119,
-	"./de-at.js": 119,
-	"./de-ch": 120,
-	"./de-ch.js": 120,
-	"./de.js": 118,
-	"./dv": 121,
-	"./dv.js": 121,
-	"./el": 122,
-	"./el.js": 122,
-	"./en-au": 123,
-	"./en-au.js": 123,
-	"./en-ca": 124,
-	"./en-ca.js": 124,
-	"./en-gb": 125,
-	"./en-gb.js": 125,
-	"./en-ie": 126,
-	"./en-ie.js": 126,
-	"./en-nz": 127,
-	"./en-nz.js": 127,
-	"./eo": 128,
-	"./eo.js": 128,
-	"./es": 129,
-	"./es-do": 130,
-	"./es-do.js": 130,
-	"./es.js": 129,
-	"./et": 131,
-	"./et.js": 131,
-	"./eu": 132,
-	"./eu.js": 132,
-	"./fa": 133,
-	"./fa.js": 133,
-	"./fi": 134,
-	"./fi.js": 134,
-	"./fo": 135,
-	"./fo.js": 135,
-	"./fr": 136,
-	"./fr-ca": 137,
-	"./fr-ca.js": 137,
-	"./fr-ch": 138,
-	"./fr-ch.js": 138,
-	"./fr.js": 136,
-	"./fy": 139,
-	"./fy.js": 139,
-	"./gd": 140,
-	"./gd.js": 140,
-	"./gl": 141,
-	"./gl.js": 141,
-	"./gom-latn": 142,
-	"./gom-latn.js": 142,
-	"./he": 143,
-	"./he.js": 143,
-	"./hi": 144,
-	"./hi.js": 144,
-	"./hr": 145,
-	"./hr.js": 145,
-	"./hu": 146,
-	"./hu.js": 146,
-	"./hy-am": 147,
-	"./hy-am.js": 147,
-	"./id": 148,
-	"./id.js": 148,
-	"./is": 149,
-	"./is.js": 149,
-	"./it": 150,
-	"./it.js": 150,
-	"./ja": 151,
-	"./ja.js": 151,
-	"./jv": 152,
-	"./jv.js": 152,
-	"./ka": 153,
-	"./ka.js": 153,
-	"./kk": 154,
-	"./kk.js": 154,
-	"./km": 155,
-	"./km.js": 155,
-	"./kn": 156,
-	"./kn.js": 156,
-	"./ko": 157,
-	"./ko.js": 157,
-	"./ky": 158,
-	"./ky.js": 158,
-	"./lb": 159,
-	"./lb.js": 159,
-	"./lo": 160,
-	"./lo.js": 160,
-	"./lt": 161,
-	"./lt.js": 161,
-	"./lv": 162,
-	"./lv.js": 162,
-	"./me": 163,
-	"./me.js": 163,
-	"./mi": 164,
-	"./mi.js": 164,
-	"./mk": 165,
-	"./mk.js": 165,
-	"./ml": 166,
-	"./ml.js": 166,
-	"./mr": 167,
-	"./mr.js": 167,
-	"./ms": 168,
-	"./ms-my": 169,
-	"./ms-my.js": 169,
-	"./ms.js": 168,
-	"./my": 170,
-	"./my.js": 170,
-	"./nb": 171,
-	"./nb.js": 171,
-	"./ne": 172,
-	"./ne.js": 172,
-	"./nl": 173,
-	"./nl-be": 174,
-	"./nl-be.js": 174,
-	"./nl.js": 173,
-	"./nn": 175,
-	"./nn.js": 175,
-	"./pa-in": 176,
-	"./pa-in.js": 176,
-	"./pl": 177,
-	"./pl.js": 177,
-	"./pt": 178,
-	"./pt-br": 179,
-	"./pt-br.js": 179,
-	"./pt.js": 178,
-	"./ro": 180,
-	"./ro.js": 180,
-	"./ru": 181,
-	"./ru.js": 181,
-	"./sd": 182,
-	"./sd.js": 182,
-	"./se": 183,
-	"./se.js": 183,
-	"./si": 184,
-	"./si.js": 184,
-	"./sk": 185,
-	"./sk.js": 185,
-	"./sl": 186,
-	"./sl.js": 186,
-	"./sq": 187,
-	"./sq.js": 187,
-	"./sr": 188,
-	"./sr-cyrl": 189,
-	"./sr-cyrl.js": 189,
-	"./sr.js": 188,
-	"./ss": 190,
-	"./ss.js": 190,
-	"./sv": 191,
-	"./sv.js": 191,
-	"./sw": 192,
-	"./sw.js": 192,
-	"./ta": 193,
-	"./ta.js": 193,
-	"./te": 194,
-	"./te.js": 194,
-	"./tet": 195,
-	"./tet.js": 195,
-	"./th": 196,
-	"./th.js": 196,
-	"./tl-ph": 197,
-	"./tl-ph.js": 197,
-	"./tlh": 198,
-	"./tlh.js": 198,
-	"./tr": 199,
-	"./tr.js": 199,
-	"./tzl": 200,
-	"./tzl.js": 200,
-	"./tzm": 201,
-	"./tzm-latn": 202,
-	"./tzm-latn.js": 202,
-	"./tzm.js": 201,
-	"./uk": 203,
-	"./uk.js": 203,
-	"./ur": 204,
-	"./ur.js": 204,
-	"./uz": 205,
-	"./uz-latn": 206,
-	"./uz-latn.js": 206,
-	"./uz.js": 205,
-	"./vi": 207,
-	"./vi.js": 207,
-	"./x-pseudo": 208,
-	"./x-pseudo.js": 208,
-	"./yo": 209,
-	"./yo.js": 209,
-	"./zh-cn": 210,
-	"./zh-cn.js": 210,
-	"./zh-hk": 211,
-	"./zh-hk.js": 211,
-	"./zh-tw": 212,
-	"./zh-tw.js": 212
+	"./bm": 109,
+	"./bm.js": 109,
+	"./bn": 110,
+	"./bn.js": 110,
+	"./bo": 111,
+	"./bo.js": 111,
+	"./br": 112,
+	"./br.js": 112,
+	"./bs": 113,
+	"./bs.js": 113,
+	"./ca": 114,
+	"./ca.js": 114,
+	"./cs": 115,
+	"./cs.js": 115,
+	"./cv": 116,
+	"./cv.js": 116,
+	"./cy": 117,
+	"./cy.js": 117,
+	"./da": 118,
+	"./da.js": 118,
+	"./de": 119,
+	"./de-at": 120,
+	"./de-at.js": 120,
+	"./de-ch": 121,
+	"./de-ch.js": 121,
+	"./de.js": 119,
+	"./dv": 122,
+	"./dv.js": 122,
+	"./el": 123,
+	"./el.js": 123,
+	"./en-au": 124,
+	"./en-au.js": 124,
+	"./en-ca": 125,
+	"./en-ca.js": 125,
+	"./en-gb": 126,
+	"./en-gb.js": 126,
+	"./en-ie": 127,
+	"./en-ie.js": 127,
+	"./en-nz": 128,
+	"./en-nz.js": 128,
+	"./eo": 129,
+	"./eo.js": 129,
+	"./es": 130,
+	"./es-do": 131,
+	"./es-do.js": 131,
+	"./es-us": 132,
+	"./es-us.js": 132,
+	"./es.js": 130,
+	"./et": 133,
+	"./et.js": 133,
+	"./eu": 134,
+	"./eu.js": 134,
+	"./fa": 135,
+	"./fa.js": 135,
+	"./fi": 136,
+	"./fi.js": 136,
+	"./fo": 137,
+	"./fo.js": 137,
+	"./fr": 138,
+	"./fr-ca": 139,
+	"./fr-ca.js": 139,
+	"./fr-ch": 140,
+	"./fr-ch.js": 140,
+	"./fr.js": 138,
+	"./fy": 141,
+	"./fy.js": 141,
+	"./gd": 142,
+	"./gd.js": 142,
+	"./gl": 143,
+	"./gl.js": 143,
+	"./gom-latn": 144,
+	"./gom-latn.js": 144,
+	"./gu": 145,
+	"./gu.js": 145,
+	"./he": 146,
+	"./he.js": 146,
+	"./hi": 147,
+	"./hi.js": 147,
+	"./hr": 148,
+	"./hr.js": 148,
+	"./hu": 149,
+	"./hu.js": 149,
+	"./hy-am": 150,
+	"./hy-am.js": 150,
+	"./id": 151,
+	"./id.js": 151,
+	"./is": 152,
+	"./is.js": 152,
+	"./it": 153,
+	"./it.js": 153,
+	"./ja": 154,
+	"./ja.js": 154,
+	"./jv": 155,
+	"./jv.js": 155,
+	"./ka": 156,
+	"./ka.js": 156,
+	"./kk": 157,
+	"./kk.js": 157,
+	"./km": 158,
+	"./km.js": 158,
+	"./kn": 159,
+	"./kn.js": 159,
+	"./ko": 160,
+	"./ko.js": 160,
+	"./ky": 161,
+	"./ky.js": 161,
+	"./lb": 162,
+	"./lb.js": 162,
+	"./lo": 163,
+	"./lo.js": 163,
+	"./lt": 164,
+	"./lt.js": 164,
+	"./lv": 165,
+	"./lv.js": 165,
+	"./me": 166,
+	"./me.js": 166,
+	"./mi": 167,
+	"./mi.js": 167,
+	"./mk": 168,
+	"./mk.js": 168,
+	"./ml": 169,
+	"./ml.js": 169,
+	"./mr": 170,
+	"./mr.js": 170,
+	"./ms": 171,
+	"./ms-my": 172,
+	"./ms-my.js": 172,
+	"./ms.js": 171,
+	"./my": 173,
+	"./my.js": 173,
+	"./nb": 174,
+	"./nb.js": 174,
+	"./ne": 175,
+	"./ne.js": 175,
+	"./nl": 176,
+	"./nl-be": 177,
+	"./nl-be.js": 177,
+	"./nl.js": 176,
+	"./nn": 178,
+	"./nn.js": 178,
+	"./pa-in": 179,
+	"./pa-in.js": 179,
+	"./pl": 180,
+	"./pl.js": 180,
+	"./pt": 181,
+	"./pt-br": 182,
+	"./pt-br.js": 182,
+	"./pt.js": 181,
+	"./ro": 183,
+	"./ro.js": 183,
+	"./ru": 184,
+	"./ru.js": 184,
+	"./sd": 185,
+	"./sd.js": 185,
+	"./se": 186,
+	"./se.js": 186,
+	"./si": 187,
+	"./si.js": 187,
+	"./sk": 188,
+	"./sk.js": 188,
+	"./sl": 189,
+	"./sl.js": 189,
+	"./sq": 190,
+	"./sq.js": 190,
+	"./sr": 191,
+	"./sr-cyrl": 192,
+	"./sr-cyrl.js": 192,
+	"./sr.js": 191,
+	"./ss": 193,
+	"./ss.js": 193,
+	"./sv": 194,
+	"./sv.js": 194,
+	"./sw": 195,
+	"./sw.js": 195,
+	"./ta": 196,
+	"./ta.js": 196,
+	"./te": 197,
+	"./te.js": 197,
+	"./tet": 198,
+	"./tet.js": 198,
+	"./th": 199,
+	"./th.js": 199,
+	"./tl-ph": 200,
+	"./tl-ph.js": 200,
+	"./tlh": 201,
+	"./tlh.js": 201,
+	"./tr": 202,
+	"./tr.js": 202,
+	"./tzl": 203,
+	"./tzl.js": 203,
+	"./tzm": 204,
+	"./tzm-latn": 205,
+	"./tzm-latn.js": 205,
+	"./tzm.js": 204,
+	"./uk": 206,
+	"./uk.js": 206,
+	"./ur": 207,
+	"./ur.js": 207,
+	"./uz": 208,
+	"./uz-latn": 209,
+	"./uz-latn.js": 209,
+	"./uz.js": 208,
+	"./vi": 210,
+	"./vi.js": 210,
+	"./x-pseudo": 211,
+	"./x-pseudo.js": 211,
+	"./yo": 212,
+	"./yo.js": 212,
+	"./zh-cn": 213,
+	"./zh-cn.js": 213,
+	"./zh-hk": 214,
+	"./zh-hk.js": 214,
+	"./zh-tw": 215,
+	"./zh-tw.js": 215
 };
 function webpackContext(req) {
 	return __webpack_require__(webpackContextResolve(req));
@@ -40306,20 +40833,20 @@ webpackContext.keys = function webpackContextKeys() {
 };
 webpackContext.resolve = webpackContextResolve;
 module.exports = webpackContext;
-webpackContext.id = 258;
+webpackContext.id = 262;
 
 /***/ }),
-/* 259 */
+/* 263 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(global) {
 
-__webpack_require__(260);
+__webpack_require__(264);
 
-__webpack_require__(460);
+__webpack_require__(464);
 
-__webpack_require__(461);
+__webpack_require__(465);
 
 if (global._babelPolyfill) {
   throw new Error("only one instance of babel-polyfill is allowed");
@@ -40341,17 +40868,13 @@ define(String.prototype, "padRight", "".padEnd);
 "pop,reverse,shift,keys,values,entries,indexOf,every,some,forEach,map,filter,find,findIndex,includes,join,slice,concat,push,splice,unshift,sort,lastIndexOf,reduce,reduceRight,copyWithin,fill".split(",").forEach(function (key) {
   [][key] && define(Array, key, Function.call.bind([][key]));
 });
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(54)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(49)))
 
 /***/ }),
-/* 260 */
+/* 264 */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(261);
-__webpack_require__(264);
 __webpack_require__(265);
-__webpack_require__(266);
-__webpack_require__(267);
 __webpack_require__(268);
 __webpack_require__(269);
 __webpack_require__(270);
@@ -40363,10 +40886,10 @@ __webpack_require__(275);
 __webpack_require__(276);
 __webpack_require__(277);
 __webpack_require__(278);
+__webpack_require__(279);
 __webpack_require__(280);
 __webpack_require__(281);
 __webpack_require__(282);
-__webpack_require__(283);
 __webpack_require__(284);
 __webpack_require__(285);
 __webpack_require__(286);
@@ -40424,19 +40947,19 @@ __webpack_require__(337);
 __webpack_require__(338);
 __webpack_require__(339);
 __webpack_require__(340);
+__webpack_require__(341);
 __webpack_require__(342);
 __webpack_require__(343);
-__webpack_require__(345);
+__webpack_require__(344);
 __webpack_require__(346);
 __webpack_require__(347);
-__webpack_require__(348);
 __webpack_require__(349);
 __webpack_require__(350);
 __webpack_require__(351);
+__webpack_require__(352);
 __webpack_require__(353);
 __webpack_require__(354);
 __webpack_require__(355);
-__webpack_require__(356);
 __webpack_require__(357);
 __webpack_require__(358);
 __webpack_require__(359);
@@ -40446,22 +40969,22 @@ __webpack_require__(362);
 __webpack_require__(363);
 __webpack_require__(364);
 __webpack_require__(365);
-__webpack_require__(91);
 __webpack_require__(366);
 __webpack_require__(367);
-__webpack_require__(230);
 __webpack_require__(368);
 __webpack_require__(369);
+__webpack_require__(91);
 __webpack_require__(370);
 __webpack_require__(371);
-__webpack_require__(372);
 __webpack_require__(233);
-__webpack_require__(235);
-__webpack_require__(236);
+__webpack_require__(372);
 __webpack_require__(373);
 __webpack_require__(374);
 __webpack_require__(375);
 __webpack_require__(376);
+__webpack_require__(236);
+__webpack_require__(238);
+__webpack_require__(239);
 __webpack_require__(377);
 __webpack_require__(378);
 __webpack_require__(379);
@@ -40541,13 +41064,17 @@ __webpack_require__(452);
 __webpack_require__(453);
 __webpack_require__(454);
 __webpack_require__(455);
+__webpack_require__(456);
+__webpack_require__(457);
 __webpack_require__(458);
 __webpack_require__(459);
+__webpack_require__(462);
+__webpack_require__(463);
 module.exports = __webpack_require__(23);
 
 
 /***/ }),
-/* 261 */
+/* 265 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -40564,17 +41091,17 @@ var shared = __webpack_require__(55);
 var setToStringTag = __webpack_require__(45);
 var uid = __webpack_require__(36);
 var wks = __webpack_require__(6);
-var wksExt = __webpack_require__(214);
+var wksExt = __webpack_require__(217);
 var wksDefine = __webpack_require__(71);
-var keyOf = __webpack_require__(262);
-var enumKeys = __webpack_require__(263);
+var keyOf = __webpack_require__(266);
+var enumKeys = __webpack_require__(267);
 var isArray = __webpack_require__(58);
 var anObject = __webpack_require__(2);
 var toIObject = __webpack_require__(15);
 var toPrimitive = __webpack_require__(24);
 var createDesc = __webpack_require__(35);
 var _create = __webpack_require__(39);
-var gOPNExt = __webpack_require__(217);
+var gOPNExt = __webpack_require__(220);
 var $GOPD = __webpack_require__(17);
 var $DP = __webpack_require__(8);
 var $keys = __webpack_require__(33);
@@ -40701,7 +41228,7 @@ if (!USE_NATIVE) {
   $GOPD.f = $getOwnPropertyDescriptor;
   $DP.f = $defineProperty;
   __webpack_require__(40).f = gOPNExt.f = $getOwnPropertyNames;
-  __webpack_require__(50).f = $propertyIsEnumerable;
+  __webpack_require__(51).f = $propertyIsEnumerable;
   __webpack_require__(57).f = $getOwnPropertySymbols;
 
   if (DESCRIPTORS && !__webpack_require__(37)) {
@@ -40789,7 +41316,7 @@ setToStringTag(global.JSON, 'JSON', true);
 
 
 /***/ }),
-/* 262 */
+/* 266 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var getKeys = __webpack_require__(33);
@@ -40805,13 +41332,13 @@ module.exports = function (object, el) {
 
 
 /***/ }),
-/* 263 */
+/* 267 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // all enumerable object keys, includes symbols
 var getKeys = __webpack_require__(33);
 var gOPS = __webpack_require__(57);
-var pIE = __webpack_require__(50);
+var pIE = __webpack_require__(51);
 module.exports = function (it) {
   var result = getKeys(it);
   var getSymbols = gOPS.f;
@@ -40826,7 +41353,7 @@ module.exports = function (it) {
 
 
 /***/ }),
-/* 264 */
+/* 268 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
@@ -40835,7 +41362,7 @@ $export($export.S, 'Object', { create: __webpack_require__(39) });
 
 
 /***/ }),
-/* 265 */
+/* 269 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
@@ -40844,16 +41371,16 @@ $export($export.S + $export.F * !__webpack_require__(7), 'Object', { definePrope
 
 
 /***/ }),
-/* 266 */
+/* 270 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
 // 19.1.2.3 / 15.2.3.7 Object.defineProperties(O, Properties)
-$export($export.S + $export.F * !__webpack_require__(7), 'Object', { defineProperties: __webpack_require__(216) });
+$export($export.S + $export.F * !__webpack_require__(7), 'Object', { defineProperties: __webpack_require__(219) });
 
 
 /***/ }),
-/* 267 */
+/* 271 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.6 Object.getOwnPropertyDescriptor(O, P)
@@ -40868,7 +41395,7 @@ __webpack_require__(27)('getOwnPropertyDescriptor', function () {
 
 
 /***/ }),
-/* 268 */
+/* 272 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.9 Object.getPrototypeOf(O)
@@ -40883,7 +41410,7 @@ __webpack_require__(27)('getPrototypeOf', function () {
 
 
 /***/ }),
-/* 269 */
+/* 273 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.14 Object.keys(O)
@@ -40898,17 +41425,17 @@ __webpack_require__(27)('keys', function () {
 
 
 /***/ }),
-/* 270 */
+/* 274 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.7 Object.getOwnPropertyNames(O)
 __webpack_require__(27)('getOwnPropertyNames', function () {
-  return __webpack_require__(217).f;
+  return __webpack_require__(220).f;
 });
 
 
 /***/ }),
-/* 271 */
+/* 275 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.5 Object.freeze(O)
@@ -40923,7 +41450,7 @@ __webpack_require__(27)('freeze', function ($freeze) {
 
 
 /***/ }),
-/* 272 */
+/* 276 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.17 Object.seal(O)
@@ -40938,7 +41465,7 @@ __webpack_require__(27)('seal', function ($seal) {
 
 
 /***/ }),
-/* 273 */
+/* 277 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.15 Object.preventExtensions(O)
@@ -40953,7 +41480,7 @@ __webpack_require__(27)('preventExtensions', function ($preventExtensions) {
 
 
 /***/ }),
-/* 274 */
+/* 278 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.12 Object.isFrozen(O)
@@ -40967,7 +41494,7 @@ __webpack_require__(27)('isFrozen', function ($isFrozen) {
 
 
 /***/ }),
-/* 275 */
+/* 279 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.13 Object.isSealed(O)
@@ -40981,7 +41508,7 @@ __webpack_require__(27)('isSealed', function ($isSealed) {
 
 
 /***/ }),
-/* 276 */
+/* 280 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.2.11 Object.isExtensible(O)
@@ -40995,26 +41522,26 @@ __webpack_require__(27)('isExtensible', function ($isExtensible) {
 
 
 /***/ }),
-/* 277 */
+/* 281 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.3.1 Object.assign(target, source)
 var $export = __webpack_require__(0);
 
-$export($export.S + $export.F, 'Object', { assign: __webpack_require__(218) });
+$export($export.S + $export.F, 'Object', { assign: __webpack_require__(221) });
 
 
 /***/ }),
-/* 278 */
+/* 282 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.3.10 Object.is(value1, value2)
 var $export = __webpack_require__(0);
-$export($export.S, 'Object', { is: __webpack_require__(279) });
+$export($export.S, 'Object', { is: __webpack_require__(283) });
 
 
 /***/ }),
-/* 279 */
+/* 283 */
 /***/ (function(module, exports) {
 
 // 7.2.9 SameValue(x, y)
@@ -41025,7 +41552,7 @@ module.exports = Object.is || function is(x, y) {
 
 
 /***/ }),
-/* 280 */
+/* 284 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.1.3.19 Object.setPrototypeOf(O, proto)
@@ -41034,13 +41561,13 @@ $export($export.S, 'Object', { setPrototypeOf: __webpack_require__(75).set });
 
 
 /***/ }),
-/* 281 */
+/* 285 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 // 19.1.3.6 Object.prototype.toString()
-var classof = __webpack_require__(51);
+var classof = __webpack_require__(52);
 var test = {};
 test[__webpack_require__(6)('toStringTag')] = 'z';
 if (test + '' != '[object z]') {
@@ -41051,17 +41578,17 @@ if (test + '' != '[object z]') {
 
 
 /***/ }),
-/* 282 */
+/* 286 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 19.2.3.2 / 15.3.4.5 Function.prototype.bind(thisArg, args...)
 var $export = __webpack_require__(0);
 
-$export($export.P, 'Function', { bind: __webpack_require__(219) });
+$export($export.P, 'Function', { bind: __webpack_require__(222) });
 
 
 /***/ }),
-/* 283 */
+/* 287 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var dP = __webpack_require__(8).f;
@@ -41083,7 +41610,7 @@ NAME in FProto || __webpack_require__(7) && dP(FProto, NAME, {
 
 
 /***/ }),
-/* 284 */
+/* 288 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41103,27 +41630,27 @@ if (!(HAS_INSTANCE in FunctionProto)) __webpack_require__(8).f(FunctionProto, HA
 
 
 /***/ }),
-/* 285 */
+/* 289 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
-var $parseInt = __webpack_require__(220);
+var $parseInt = __webpack_require__(223);
 // 18.2.5 parseInt(string, radix)
 $export($export.G + $export.F * (parseInt != $parseInt), { parseInt: $parseInt });
 
 
 /***/ }),
-/* 286 */
+/* 290 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
-var $parseFloat = __webpack_require__(221);
+var $parseFloat = __webpack_require__(224);
 // 18.2.4 parseFloat(string)
 $export($export.G + $export.F * (parseFloat != $parseFloat), { parseFloat: $parseFloat });
 
 
 /***/ }),
-/* 287 */
+/* 291 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41199,14 +41726,14 @@ if (!$Number(' 0o1') || !$Number('0b1') || $Number('+0x1')) {
 
 
 /***/ }),
-/* 288 */
+/* 292 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 var $export = __webpack_require__(0);
 var toInteger = __webpack_require__(26);
-var aNumberValue = __webpack_require__(222);
+var aNumberValue = __webpack_require__(225);
 var repeat = __webpack_require__(78);
 var $toFixed = 1.0.toFixed;
 var floor = Math.floor;
@@ -41320,14 +41847,14 @@ $export($export.P + $export.F * (!!$toFixed && (
 
 
 /***/ }),
-/* 289 */
+/* 293 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 var $export = __webpack_require__(0);
 var $fails = __webpack_require__(4);
-var aNumberValue = __webpack_require__(222);
+var aNumberValue = __webpack_require__(225);
 var $toPrecision = 1.0.toPrecision;
 
 $export($export.P + $export.F * ($fails(function () {
@@ -41345,7 +41872,7 @@ $export($export.P + $export.F * ($fails(function () {
 
 
 /***/ }),
-/* 290 */
+/* 294 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.1.2.1 Number.EPSILON
@@ -41355,7 +41882,7 @@ $export($export.S, 'Number', { EPSILON: Math.pow(2, -52) });
 
 
 /***/ }),
-/* 291 */
+/* 295 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.1.2.2 Number.isFinite(number)
@@ -41370,17 +41897,17 @@ $export($export.S, 'Number', {
 
 
 /***/ }),
-/* 292 */
+/* 296 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.1.2.3 Number.isInteger(number)
 var $export = __webpack_require__(0);
 
-$export($export.S, 'Number', { isInteger: __webpack_require__(223) });
+$export($export.S, 'Number', { isInteger: __webpack_require__(226) });
 
 
 /***/ }),
-/* 293 */
+/* 297 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.1.2.4 Number.isNaN(number)
@@ -41395,12 +41922,12 @@ $export($export.S, 'Number', {
 
 
 /***/ }),
-/* 294 */
+/* 298 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.1.2.5 Number.isSafeInteger(number)
 var $export = __webpack_require__(0);
-var isInteger = __webpack_require__(223);
+var isInteger = __webpack_require__(226);
 var abs = Math.abs;
 
 $export($export.S, 'Number', {
@@ -41411,7 +41938,7 @@ $export($export.S, 'Number', {
 
 
 /***/ }),
-/* 295 */
+/* 299 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.1.2.6 Number.MAX_SAFE_INTEGER
@@ -41421,7 +41948,7 @@ $export($export.S, 'Number', { MAX_SAFE_INTEGER: 0x1fffffffffffff });
 
 
 /***/ }),
-/* 296 */
+/* 300 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.1.2.10 Number.MIN_SAFE_INTEGER
@@ -41431,32 +41958,32 @@ $export($export.S, 'Number', { MIN_SAFE_INTEGER: -0x1fffffffffffff });
 
 
 /***/ }),
-/* 297 */
+/* 301 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
-var $parseFloat = __webpack_require__(221);
+var $parseFloat = __webpack_require__(224);
 // 20.1.2.12 Number.parseFloat(string)
 $export($export.S + $export.F * (Number.parseFloat != $parseFloat), 'Number', { parseFloat: $parseFloat });
 
 
 /***/ }),
-/* 298 */
+/* 302 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
-var $parseInt = __webpack_require__(220);
+var $parseInt = __webpack_require__(223);
 // 20.1.2.13 Number.parseInt(string, radix)
 $export($export.S + $export.F * (Number.parseInt != $parseInt), 'Number', { parseInt: $parseInt });
 
 
 /***/ }),
-/* 299 */
+/* 303 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.3 Math.acosh(x)
 var $export = __webpack_require__(0);
-var log1p = __webpack_require__(224);
+var log1p = __webpack_require__(227);
 var sqrt = Math.sqrt;
 var $acosh = Math.acosh;
 
@@ -41475,7 +42002,7 @@ $export($export.S + $export.F * !($acosh
 
 
 /***/ }),
-/* 300 */
+/* 304 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.5 Math.asinh(x)
@@ -41491,7 +42018,7 @@ $export($export.S + $export.F * !($asinh && 1 / $asinh(0) > 0), 'Math', { asinh:
 
 
 /***/ }),
-/* 301 */
+/* 305 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.7 Math.atanh(x)
@@ -41507,7 +42034,7 @@ $export($export.S + $export.F * !($atanh && 1 / $atanh(-0) < 0), 'Math', {
 
 
 /***/ }),
-/* 302 */
+/* 306 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.9 Math.cbrt(x)
@@ -41522,7 +42049,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 303 */
+/* 307 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.11 Math.clz32(x)
@@ -41536,7 +42063,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 304 */
+/* 308 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.12 Math.cosh(x)
@@ -41551,7 +42078,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 305 */
+/* 309 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.14 Math.expm1(x)
@@ -41562,17 +42089,17 @@ $export($export.S + $export.F * ($expm1 != Math.expm1), 'Math', { expm1: $expm1 
 
 
 /***/ }),
-/* 306 */
+/* 310 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.16 Math.fround(x)
 var $export = __webpack_require__(0);
 
-$export($export.S, 'Math', { fround: __webpack_require__(225) });
+$export($export.S, 'Math', { fround: __webpack_require__(228) });
 
 
 /***/ }),
-/* 307 */
+/* 311 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.17 Math.hypot([value1[, value2[, … ]]])
@@ -41603,7 +42130,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 308 */
+/* 312 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.18 Math.imul(x, y)
@@ -41626,7 +42153,7 @@ $export($export.S + $export.F * __webpack_require__(4)(function () {
 
 
 /***/ }),
-/* 309 */
+/* 313 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.21 Math.log10(x)
@@ -41640,17 +42167,17 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 310 */
+/* 314 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.20 Math.log1p(x)
 var $export = __webpack_require__(0);
 
-$export($export.S, 'Math', { log1p: __webpack_require__(224) });
+$export($export.S, 'Math', { log1p: __webpack_require__(227) });
 
 
 /***/ }),
-/* 311 */
+/* 315 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.22 Math.log2(x)
@@ -41664,7 +42191,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 312 */
+/* 316 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.28 Math.sign(x)
@@ -41674,7 +42201,7 @@ $export($export.S, 'Math', { sign: __webpack_require__(79) });
 
 
 /***/ }),
-/* 313 */
+/* 317 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.30 Math.sinh(x)
@@ -41695,7 +42222,7 @@ $export($export.S + $export.F * __webpack_require__(4)(function () {
 
 
 /***/ }),
-/* 314 */
+/* 318 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.33 Math.tanh(x)
@@ -41713,7 +42240,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 315 */
+/* 319 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.2.2.34 Math.trunc(x)
@@ -41727,7 +42254,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 316 */
+/* 320 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
@@ -41756,7 +42283,7 @@ $export($export.S + $export.F * (!!$fromCodePoint && $fromCodePoint.length != 1)
 
 
 /***/ }),
-/* 317 */
+/* 321 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
@@ -41780,7 +42307,7 @@ $export($export.S, 'String', {
 
 
 /***/ }),
-/* 318 */
+/* 322 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41794,7 +42321,7 @@ __webpack_require__(46)('trim', function ($trim) {
 
 
 /***/ }),
-/* 319 */
+/* 323 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41818,7 +42345,7 @@ __webpack_require__(82)(String, 'String', function (iterated) {
 
 
 /***/ }),
-/* 320 */
+/* 324 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41834,7 +42361,7 @@ $export($export.P, 'String', {
 
 
 /***/ }),
-/* 321 */
+/* 325 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41861,7 +42388,7 @@ $export($export.P + $export.F * __webpack_require__(85)(ENDS_WITH), 'String', {
 
 
 /***/ }),
-/* 322 */
+/* 326 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41880,7 +42407,7 @@ $export($export.P + $export.F * __webpack_require__(85)(INCLUDES), 'String', {
 
 
 /***/ }),
-/* 323 */
+/* 327 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
@@ -41892,7 +42419,7 @@ $export($export.P, 'String', {
 
 
 /***/ }),
-/* 324 */
+/* 328 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41917,7 +42444,7 @@ $export($export.P + $export.F * __webpack_require__(85)(STARTS_WITH), 'String', 
 
 
 /***/ }),
-/* 325 */
+/* 329 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41931,7 +42458,7 @@ __webpack_require__(16)('anchor', function (createHTML) {
 
 
 /***/ }),
-/* 326 */
+/* 330 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41945,7 +42472,7 @@ __webpack_require__(16)('big', function (createHTML) {
 
 
 /***/ }),
-/* 327 */
+/* 331 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41959,7 +42486,7 @@ __webpack_require__(16)('blink', function (createHTML) {
 
 
 /***/ }),
-/* 328 */
+/* 332 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41973,7 +42500,7 @@ __webpack_require__(16)('bold', function (createHTML) {
 
 
 /***/ }),
-/* 329 */
+/* 333 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -41987,7 +42514,7 @@ __webpack_require__(16)('fixed', function (createHTML) {
 
 
 /***/ }),
-/* 330 */
+/* 334 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42001,7 +42528,7 @@ __webpack_require__(16)('fontcolor', function (createHTML) {
 
 
 /***/ }),
-/* 331 */
+/* 335 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42015,7 +42542,7 @@ __webpack_require__(16)('fontsize', function (createHTML) {
 
 
 /***/ }),
-/* 332 */
+/* 336 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42029,7 +42556,7 @@ __webpack_require__(16)('italics', function (createHTML) {
 
 
 /***/ }),
-/* 333 */
+/* 337 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42043,7 +42570,7 @@ __webpack_require__(16)('link', function (createHTML) {
 
 
 /***/ }),
-/* 334 */
+/* 338 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42057,7 +42584,7 @@ __webpack_require__(16)('small', function (createHTML) {
 
 
 /***/ }),
-/* 335 */
+/* 339 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42071,7 +42598,7 @@ __webpack_require__(16)('strike', function (createHTML) {
 
 
 /***/ }),
-/* 336 */
+/* 340 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42085,7 +42612,7 @@ __webpack_require__(16)('sub', function (createHTML) {
 
 
 /***/ }),
-/* 337 */
+/* 341 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42099,7 +42626,7 @@ __webpack_require__(16)('sup', function (createHTML) {
 
 
 /***/ }),
-/* 338 */
+/* 342 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.3.3.1 / 15.9.4.4 Date.now()
@@ -42109,7 +42636,7 @@ $export($export.S, 'Date', { now: function () { return new Date().getTime(); } }
 
 
 /***/ }),
-/* 339 */
+/* 343 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42132,12 +42659,12 @@ $export($export.P + $export.F * __webpack_require__(4)(function () {
 
 
 /***/ }),
-/* 340 */
+/* 344 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 20.3.4.36 / 15.9.5.43 Date.prototype.toISOString()
 var $export = __webpack_require__(0);
-var toISOString = __webpack_require__(341);
+var toISOString = __webpack_require__(345);
 
 // PhantomJS / old WebKit has a broken implementations
 $export($export.P + $export.F * (Date.prototype.toISOString !== toISOString), 'Date', {
@@ -42146,7 +42673,7 @@ $export($export.P + $export.F * (Date.prototype.toISOString !== toISOString), 'D
 
 
 /***/ }),
-/* 341 */
+/* 345 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42179,7 +42706,7 @@ module.exports = (fails(function () {
 
 
 /***/ }),
-/* 342 */
+/* 346 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var DateProto = Date.prototype;
@@ -42197,17 +42724,17 @@ if (new Date(NaN) + '' != INVALID_DATE) {
 
 
 /***/ }),
-/* 343 */
+/* 347 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var TO_PRIMITIVE = __webpack_require__(6)('toPrimitive');
 var proto = Date.prototype;
 
-if (!(TO_PRIMITIVE in proto)) __webpack_require__(13)(proto, TO_PRIMITIVE, __webpack_require__(344));
+if (!(TO_PRIMITIVE in proto)) __webpack_require__(13)(proto, TO_PRIMITIVE, __webpack_require__(348));
 
 
 /***/ }),
-/* 344 */
+/* 348 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42223,7 +42750,7 @@ module.exports = function (hint) {
 
 
 /***/ }),
-/* 345 */
+/* 349 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 22.1.2.2 / 15.4.3.2 Array.isArray(arg)
@@ -42233,7 +42760,7 @@ $export($export.S, 'Array', { isArray: __webpack_require__(58) });
 
 
 /***/ }),
-/* 346 */
+/* 350 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42241,7 +42768,7 @@ $export($export.S, 'Array', { isArray: __webpack_require__(58) });
 var ctx = __webpack_require__(20);
 var $export = __webpack_require__(0);
 var toObject = __webpack_require__(10);
-var call = __webpack_require__(226);
+var call = __webpack_require__(229);
 var isArrayIter = __webpack_require__(86);
 var toLength = __webpack_require__(9);
 var createProperty = __webpack_require__(87);
@@ -42277,7 +42804,7 @@ $export($export.S + $export.F * !__webpack_require__(61)(function (iter) { Array
 
 
 /***/ }),
-/* 347 */
+/* 351 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42303,7 +42830,7 @@ $export($export.S + $export.F * __webpack_require__(4)(function () {
 
 
 /***/ }),
-/* 348 */
+/* 352 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42314,7 +42841,7 @@ var toIObject = __webpack_require__(15);
 var arrayJoin = [].join;
 
 // fallback for not array-like strings
-$export($export.P + $export.F * (__webpack_require__(49) != Object || !__webpack_require__(22)(arrayJoin)), 'Array', {
+$export($export.P + $export.F * (__webpack_require__(50) != Object || !__webpack_require__(22)(arrayJoin)), 'Array', {
   join: function join(separator) {
     return arrayJoin.call(toIObject(this), separator === undefined ? ',' : separator);
   }
@@ -42322,7 +42849,7 @@ $export($export.P + $export.F * (__webpack_require__(49) != Object || !__webpack
 
 
 /***/ }),
-/* 349 */
+/* 353 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42357,7 +42884,7 @@ $export($export.P + $export.F * __webpack_require__(4)(function () {
 
 
 /***/ }),
-/* 350 */
+/* 354 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42387,7 +42914,7 @@ $export($export.P + $export.F * (fails(function () {
 
 
 /***/ }),
-/* 351 */
+/* 355 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42405,7 +42932,7 @@ $export($export.P + $export.F * !STRICT, 'Array', {
 
 
 /***/ }),
-/* 352 */
+/* 356 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var isObject = __webpack_require__(5);
@@ -42427,7 +42954,7 @@ module.exports = function (original) {
 
 
 /***/ }),
-/* 353 */
+/* 357 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42444,7 +42971,7 @@ $export($export.P + $export.F * !__webpack_require__(22)([].map, true), 'Array',
 
 
 /***/ }),
-/* 354 */
+/* 358 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42461,7 +42988,7 @@ $export($export.P + $export.F * !__webpack_require__(22)([].filter, true), 'Arra
 
 
 /***/ }),
-/* 355 */
+/* 359 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42478,7 +43005,7 @@ $export($export.P + $export.F * !__webpack_require__(22)([].some, true), 'Array'
 
 
 /***/ }),
-/* 356 */
+/* 360 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42495,13 +43022,13 @@ $export($export.P + $export.F * !__webpack_require__(22)([].every, true), 'Array
 
 
 /***/ }),
-/* 357 */
+/* 361 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 var $export = __webpack_require__(0);
-var $reduce = __webpack_require__(227);
+var $reduce = __webpack_require__(230);
 
 $export($export.P + $export.F * !__webpack_require__(22)([].reduce, true), 'Array', {
   // 22.1.3.18 / 15.4.4.21 Array.prototype.reduce(callbackfn [, initialValue])
@@ -42512,13 +43039,13 @@ $export($export.P + $export.F * !__webpack_require__(22)([].reduce, true), 'Arra
 
 
 /***/ }),
-/* 358 */
+/* 362 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 var $export = __webpack_require__(0);
-var $reduce = __webpack_require__(227);
+var $reduce = __webpack_require__(230);
 
 $export($export.P + $export.F * !__webpack_require__(22)([].reduceRight, true), 'Array', {
   // 22.1.3.19 / 15.4.4.22 Array.prototype.reduceRight(callbackfn [, initialValue])
@@ -42529,7 +43056,7 @@ $export($export.P + $export.F * !__webpack_require__(22)([].reduceRight, true), 
 
 
 /***/ }),
-/* 359 */
+/* 363 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42551,7 +43078,7 @@ $export($export.P + $export.F * (NEGATIVE_ZERO || !__webpack_require__(22)($nati
 
 
 /***/ }),
-/* 360 */
+/* 364 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42580,19 +43107,19 @@ $export($export.P + $export.F * (NEGATIVE_ZERO || !__webpack_require__(22)($nati
 
 
 /***/ }),
-/* 361 */
+/* 365 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 22.1.3.3 Array.prototype.copyWithin(target, start, end = this.length)
 var $export = __webpack_require__(0);
 
-$export($export.P, 'Array', { copyWithin: __webpack_require__(228) });
+$export($export.P, 'Array', { copyWithin: __webpack_require__(231) });
 
 __webpack_require__(34)('copyWithin');
 
 
 /***/ }),
-/* 362 */
+/* 366 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 22.1.3.6 Array.prototype.fill(value, start = 0, end = this.length)
@@ -42604,7 +43131,7 @@ __webpack_require__(34)('fill');
 
 
 /***/ }),
-/* 363 */
+/* 367 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42625,7 +43152,7 @@ __webpack_require__(34)(KEY);
 
 
 /***/ }),
-/* 364 */
+/* 368 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42646,14 +43173,14 @@ __webpack_require__(34)(KEY);
 
 
 /***/ }),
-/* 365 */
+/* 369 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(41)('Array');
 
 
 /***/ }),
-/* 366 */
+/* 370 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var global = __webpack_require__(3);
@@ -42702,12 +43229,12 @@ __webpack_require__(41)('RegExp');
 
 
 /***/ }),
-/* 367 */
+/* 371 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-__webpack_require__(230);
+__webpack_require__(233);
 var anObject = __webpack_require__(2);
 var $flags = __webpack_require__(62);
 var DESCRIPTORS = __webpack_require__(7);
@@ -42734,7 +43261,7 @@ if (__webpack_require__(4)(function () { return $toString.call({ source: 'a', fl
 
 
 /***/ }),
-/* 368 */
+/* 372 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // @@match logic
@@ -42750,7 +43277,7 @@ __webpack_require__(63)('match', 1, function (defined, MATCH, $match) {
 
 
 /***/ }),
-/* 369 */
+/* 373 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // @@replace logic
@@ -42768,7 +43295,7 @@ __webpack_require__(63)('replace', 2, function (defined, REPLACE, $replace) {
 
 
 /***/ }),
-/* 370 */
+/* 374 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // @@search logic
@@ -42784,7 +43311,7 @@ __webpack_require__(63)('search', 1, function (defined, SEARCH, $search) {
 
 
 /***/ }),
-/* 371 */
+/* 375 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // @@split logic
@@ -42861,7 +43388,7 @@ __webpack_require__(63)('split', 2, function (defined, SPLIT, $split) {
 
 
 /***/ }),
-/* 372 */
+/* 376 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -42869,7 +43396,7 @@ __webpack_require__(63)('split', 2, function (defined, SPLIT, $split) {
 var LIBRARY = __webpack_require__(37);
 var global = __webpack_require__(3);
 var ctx = __webpack_require__(20);
-var classof = __webpack_require__(51);
+var classof = __webpack_require__(52);
 var $export = __webpack_require__(0);
 var isObject = __webpack_require__(5);
 var aFunction = __webpack_require__(11);
@@ -42879,8 +43406,8 @@ var speciesConstructor = __webpack_require__(64);
 var task = __webpack_require__(92).set;
 var microtask = __webpack_require__(93)();
 var newPromiseCapabilityModule = __webpack_require__(94);
-var perform = __webpack_require__(231);
-var promiseResolve = __webpack_require__(232);
+var perform = __webpack_require__(234);
+var promiseResolve = __webpack_require__(235);
 var PROMISE = 'Promise';
 var TypeError = global.TypeError;
 var process = global.process;
@@ -43156,12 +43683,12 @@ $export($export.S + $export.F * !(USE_NATIVE && __webpack_require__(61)(function
 
 
 /***/ }),
-/* 373 */
+/* 377 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var weak = __webpack_require__(237);
+var weak = __webpack_require__(240);
 var validate = __webpack_require__(48);
 var WEAK_SET = 'WeakSet';
 
@@ -43177,7 +43704,7 @@ __webpack_require__(65)(WEAK_SET, function (get) {
 
 
 /***/ }),
-/* 374 */
+/* 378 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43230,7 +43757,7 @@ __webpack_require__(41)(ARRAY_BUFFER);
 
 
 /***/ }),
-/* 375 */
+/* 379 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
@@ -43240,7 +43767,7 @@ $export($export.G + $export.W + $export.F * !__webpack_require__(66).ABV, {
 
 
 /***/ }),
-/* 376 */
+/* 380 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Int8', 1, function (init) {
@@ -43251,7 +43778,7 @@ __webpack_require__(29)('Int8', 1, function (init) {
 
 
 /***/ }),
-/* 377 */
+/* 381 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Uint8', 1, function (init) {
@@ -43262,7 +43789,7 @@ __webpack_require__(29)('Uint8', 1, function (init) {
 
 
 /***/ }),
-/* 378 */
+/* 382 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Uint8', 1, function (init) {
@@ -43273,7 +43800,7 @@ __webpack_require__(29)('Uint8', 1, function (init) {
 
 
 /***/ }),
-/* 379 */
+/* 383 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Int16', 2, function (init) {
@@ -43284,7 +43811,7 @@ __webpack_require__(29)('Int16', 2, function (init) {
 
 
 /***/ }),
-/* 380 */
+/* 384 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Uint16', 2, function (init) {
@@ -43295,7 +43822,7 @@ __webpack_require__(29)('Uint16', 2, function (init) {
 
 
 /***/ }),
-/* 381 */
+/* 385 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Int32', 4, function (init) {
@@ -43306,7 +43833,7 @@ __webpack_require__(29)('Int32', 4, function (init) {
 
 
 /***/ }),
-/* 382 */
+/* 386 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Uint32', 4, function (init) {
@@ -43317,7 +43844,7 @@ __webpack_require__(29)('Uint32', 4, function (init) {
 
 
 /***/ }),
-/* 383 */
+/* 387 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Float32', 4, function (init) {
@@ -43328,7 +43855,7 @@ __webpack_require__(29)('Float32', 4, function (init) {
 
 
 /***/ }),
-/* 384 */
+/* 388 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(29)('Float64', 8, function (init) {
@@ -43339,7 +43866,7 @@ __webpack_require__(29)('Float64', 8, function (init) {
 
 
 /***/ }),
-/* 385 */
+/* 389 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.1 Reflect.apply(target, thisArgument, argumentsList)
@@ -43361,7 +43888,7 @@ $export($export.S + $export.F * !__webpack_require__(4)(function () {
 
 
 /***/ }),
-/* 386 */
+/* 390 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.2 Reflect.construct(target, argumentsList [, newTarget])
@@ -43371,7 +43898,7 @@ var aFunction = __webpack_require__(11);
 var anObject = __webpack_require__(2);
 var isObject = __webpack_require__(5);
 var fails = __webpack_require__(4);
-var bind = __webpack_require__(219);
+var bind = __webpack_require__(222);
 var rConstruct = (__webpack_require__(3).Reflect || {}).construct;
 
 // MS Edge supports only 2 arguments and argumentsList argument is optional
@@ -43414,7 +43941,7 @@ $export($export.S + $export.F * (NEW_TARGET_BUG || ARGS_BUG), 'Reflect', {
 
 
 /***/ }),
-/* 387 */
+/* 391 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.3 Reflect.defineProperty(target, propertyKey, attributes)
@@ -43443,7 +43970,7 @@ $export($export.S + $export.F * __webpack_require__(4)(function () {
 
 
 /***/ }),
-/* 388 */
+/* 392 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.4 Reflect.deleteProperty(target, propertyKey)
@@ -43460,7 +43987,7 @@ $export($export.S, 'Reflect', {
 
 
 /***/ }),
-/* 389 */
+/* 393 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43493,7 +44020,7 @@ $export($export.S, 'Reflect', {
 
 
 /***/ }),
-/* 390 */
+/* 394 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.6 Reflect.get(target, propertyKey [, receiver])
@@ -43520,7 +44047,7 @@ $export($export.S, 'Reflect', { get: get });
 
 
 /***/ }),
-/* 391 */
+/* 395 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.7 Reflect.getOwnPropertyDescriptor(target, propertyKey)
@@ -43536,7 +44063,7 @@ $export($export.S, 'Reflect', {
 
 
 /***/ }),
-/* 392 */
+/* 396 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.8 Reflect.getPrototypeOf(target)
@@ -43552,7 +44079,7 @@ $export($export.S, 'Reflect', {
 
 
 /***/ }),
-/* 393 */
+/* 397 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.9 Reflect.has(target, propertyKey)
@@ -43566,7 +44093,7 @@ $export($export.S, 'Reflect', {
 
 
 /***/ }),
-/* 394 */
+/* 398 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.10 Reflect.isExtensible(target)
@@ -43583,17 +44110,17 @@ $export($export.S, 'Reflect', {
 
 
 /***/ }),
-/* 395 */
+/* 399 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.11 Reflect.ownKeys(target)
 var $export = __webpack_require__(0);
 
-$export($export.S, 'Reflect', { ownKeys: __webpack_require__(239) });
+$export($export.S, 'Reflect', { ownKeys: __webpack_require__(242) });
 
 
 /***/ }),
-/* 396 */
+/* 400 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.12 Reflect.preventExtensions(target)
@@ -43615,7 +44142,7 @@ $export($export.S, 'Reflect', {
 
 
 /***/ }),
-/* 397 */
+/* 401 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.13 Reflect.set(target, propertyKey, V [, receiver])
@@ -43652,7 +44179,7 @@ $export($export.S, 'Reflect', { set: set });
 
 
 /***/ }),
-/* 398 */
+/* 402 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // 26.1.14 Reflect.setPrototypeOf(target, proto)
@@ -43673,7 +44200,7 @@ if (setProto) $export($export.S, 'Reflect', {
 
 
 /***/ }),
-/* 399 */
+/* 403 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43692,14 +44219,14 @@ __webpack_require__(34)('includes');
 
 
 /***/ }),
-/* 400 */
+/* 404 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 // https://tc39.github.io/proposal-flatMap/#sec-Array.prototype.flatMap
 var $export = __webpack_require__(0);
-var flattenIntoArray = __webpack_require__(240);
+var flattenIntoArray = __webpack_require__(243);
 var toObject = __webpack_require__(10);
 var toLength = __webpack_require__(9);
 var aFunction = __webpack_require__(11);
@@ -43721,14 +44248,14 @@ __webpack_require__(34)('flatMap');
 
 
 /***/ }),
-/* 401 */
+/* 405 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 // https://tc39.github.io/proposal-flatMap/#sec-Array.prototype.flatten
 var $export = __webpack_require__(0);
-var flattenIntoArray = __webpack_require__(240);
+var flattenIntoArray = __webpack_require__(243);
 var toObject = __webpack_require__(10);
 var toLength = __webpack_require__(9);
 var toInteger = __webpack_require__(26);
@@ -43749,7 +44276,7 @@ __webpack_require__(34)('flatten');
 
 
 /***/ }),
-/* 402 */
+/* 406 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43766,14 +44293,14 @@ $export($export.P, 'String', {
 
 
 /***/ }),
-/* 403 */
+/* 407 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 // https://github.com/tc39/proposal-string-pad-start-end
 var $export = __webpack_require__(0);
-var $pad = __webpack_require__(241);
+var $pad = __webpack_require__(244);
 
 $export($export.P, 'String', {
   padStart: function padStart(maxLength /* , fillString = ' ' */) {
@@ -43783,14 +44310,14 @@ $export($export.P, 'String', {
 
 
 /***/ }),
-/* 404 */
+/* 408 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 // https://github.com/tc39/proposal-string-pad-start-end
 var $export = __webpack_require__(0);
-var $pad = __webpack_require__(241);
+var $pad = __webpack_require__(244);
 
 $export($export.P, 'String', {
   padEnd: function padEnd(maxLength /* , fillString = ' ' */) {
@@ -43800,7 +44327,7 @@ $export($export.P, 'String', {
 
 
 /***/ }),
-/* 405 */
+/* 409 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43814,7 +44341,7 @@ __webpack_require__(46)('trimLeft', function ($trim) {
 
 
 /***/ }),
-/* 406 */
+/* 410 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43828,7 +44355,7 @@ __webpack_require__(46)('trimRight', function ($trim) {
 
 
 /***/ }),
-/* 407 */
+/* 411 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43865,26 +44392,26 @@ $export($export.P, 'String', {
 
 
 /***/ }),
-/* 408 */
+/* 412 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(71)('asyncIterator');
 
 
 /***/ }),
-/* 409 */
+/* 413 */
 /***/ (function(module, exports, __webpack_require__) {
 
 __webpack_require__(71)('observable');
 
 
 /***/ }),
-/* 410 */
+/* 414 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/tc39/proposal-object-getownpropertydescriptors
 var $export = __webpack_require__(0);
-var ownKeys = __webpack_require__(239);
+var ownKeys = __webpack_require__(242);
 var toIObject = __webpack_require__(15);
 var gOPD = __webpack_require__(17);
 var createProperty = __webpack_require__(87);
@@ -43907,12 +44434,12 @@ $export($export.S, 'Object', {
 
 
 /***/ }),
-/* 411 */
+/* 415 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/tc39/proposal-object-values-entries
 var $export = __webpack_require__(0);
-var $values = __webpack_require__(242)(false);
+var $values = __webpack_require__(245)(false);
 
 $export($export.S, 'Object', {
   values: function values(it) {
@@ -43922,12 +44449,12 @@ $export($export.S, 'Object', {
 
 
 /***/ }),
-/* 412 */
+/* 416 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/tc39/proposal-object-values-entries
 var $export = __webpack_require__(0);
-var $entries = __webpack_require__(242)(true);
+var $entries = __webpack_require__(245)(true);
 
 $export($export.S, 'Object', {
   entries: function entries(it) {
@@ -43937,7 +44464,7 @@ $export($export.S, 'Object', {
 
 
 /***/ }),
-/* 413 */
+/* 417 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43956,7 +44483,7 @@ __webpack_require__(7) && $export($export.P + __webpack_require__(67), 'Object',
 
 
 /***/ }),
-/* 414 */
+/* 418 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -43975,7 +44502,7 @@ __webpack_require__(7) && $export($export.P + __webpack_require__(67), 'Object',
 
 
 /***/ }),
-/* 415 */
+/* 419 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -44000,7 +44527,7 @@ __webpack_require__(7) && $export($export.P + __webpack_require__(67), 'Object',
 
 
 /***/ }),
-/* 416 */
+/* 420 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -44025,27 +44552,27 @@ __webpack_require__(7) && $export($export.P + __webpack_require__(67), 'Object',
 
 
 /***/ }),
-/* 417 */
+/* 421 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/DavidBruant/Map-Set.prototype.toJSON
 var $export = __webpack_require__(0);
 
-$export($export.P + $export.R, 'Map', { toJSON: __webpack_require__(243)('Map') });
+$export($export.P + $export.R, 'Map', { toJSON: __webpack_require__(246)('Map') });
 
 
 /***/ }),
-/* 418 */
+/* 422 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/DavidBruant/Map-Set.prototype.toJSON
 var $export = __webpack_require__(0);
 
-$export($export.P + $export.R, 'Set', { toJSON: __webpack_require__(243)('Set') });
+$export($export.P + $export.R, 'Set', { toJSON: __webpack_require__(246)('Set') });
 
 
 /***/ }),
-/* 419 */
+/* 423 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-map.of
@@ -44053,7 +44580,7 @@ __webpack_require__(68)('Map');
 
 
 /***/ }),
-/* 420 */
+/* 424 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-set.of
@@ -44061,7 +44588,7 @@ __webpack_require__(68)('Set');
 
 
 /***/ }),
-/* 421 */
+/* 425 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakmap.of
@@ -44069,7 +44596,7 @@ __webpack_require__(68)('WeakMap');
 
 
 /***/ }),
-/* 422 */
+/* 426 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakset.of
@@ -44077,7 +44604,7 @@ __webpack_require__(68)('WeakSet');
 
 
 /***/ }),
-/* 423 */
+/* 427 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-map.from
@@ -44085,7 +44612,7 @@ __webpack_require__(69)('Map');
 
 
 /***/ }),
-/* 424 */
+/* 428 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-set.from
@@ -44093,7 +44620,7 @@ __webpack_require__(69)('Set');
 
 
 /***/ }),
-/* 425 */
+/* 429 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakmap.from
@@ -44101,7 +44628,7 @@ __webpack_require__(69)('WeakMap');
 
 
 /***/ }),
-/* 426 */
+/* 430 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakset.from
@@ -44109,7 +44636,7 @@ __webpack_require__(69)('WeakSet');
 
 
 /***/ }),
-/* 427 */
+/* 431 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/tc39/proposal-global
@@ -44119,7 +44646,7 @@ $export($export.G, { global: __webpack_require__(3) });
 
 
 /***/ }),
-/* 428 */
+/* 432 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/tc39/proposal-global
@@ -44129,7 +44656,7 @@ $export($export.S, 'System', { global: __webpack_require__(3) });
 
 
 /***/ }),
-/* 429 */
+/* 433 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/ljharb/proposal-is-error
@@ -44144,7 +44671,7 @@ $export($export.S, 'Error', {
 
 
 /***/ }),
-/* 430 */
+/* 434 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -44158,7 +44685,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 431 */
+/* 435 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -44168,7 +44695,7 @@ $export($export.S, 'Math', { DEG_PER_RAD: Math.PI / 180 });
 
 
 /***/ }),
-/* 432 */
+/* 436 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -44183,13 +44710,13 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 433 */
+/* 437 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://rwaldron.github.io/proposal-math-extensions/
 var $export = __webpack_require__(0);
-var scale = __webpack_require__(245);
-var fround = __webpack_require__(225);
+var scale = __webpack_require__(248);
+var fround = __webpack_require__(228);
 
 $export($export.S, 'Math', {
   fscale: function fscale(x, inLow, inHigh, outLow, outHigh) {
@@ -44199,7 +44726,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 434 */
+/* 438 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://gist.github.com/BrendanEich/4294d5c212a6d2254703
@@ -44216,7 +44743,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 435 */
+/* 439 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://gist.github.com/BrendanEich/4294d5c212a6d2254703
@@ -44233,7 +44760,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 436 */
+/* 440 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://gist.github.com/BrendanEich/4294d5c212a6d2254703
@@ -44255,7 +44782,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 437 */
+/* 441 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -44265,7 +44792,7 @@ $export($export.S, 'Math', { RAD_PER_DEG: 180 / Math.PI });
 
 
 /***/ }),
-/* 438 */
+/* 442 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -44280,17 +44807,17 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 439 */
+/* 443 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://rwaldron.github.io/proposal-math-extensions/
 var $export = __webpack_require__(0);
 
-$export($export.S, 'Math', { scale: __webpack_require__(245) });
+$export($export.S, 'Math', { scale: __webpack_require__(248) });
 
 
 /***/ }),
-/* 440 */
+/* 444 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://gist.github.com/BrendanEich/4294d5c212a6d2254703
@@ -44312,7 +44839,7 @@ $export($export.S, 'Math', {
 
 
 /***/ }),
-/* 441 */
+/* 445 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // http://jfbastien.github.io/papers/Math.signbit.html
@@ -44325,7 +44852,7 @@ $export($export.S, 'Math', { signbit: function signbit(x) {
 
 
 /***/ }),
-/* 442 */
+/* 446 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -44335,7 +44862,7 @@ var $export = __webpack_require__(0);
 var core = __webpack_require__(23);
 var global = __webpack_require__(3);
 var speciesConstructor = __webpack_require__(64);
-var promiseResolve = __webpack_require__(232);
+var promiseResolve = __webpack_require__(235);
 
 $export($export.P + $export.R, 'Promise', { 'finally': function (onFinally) {
   var C = speciesConstructor(this, core.Promise || global.Promise);
@@ -44352,7 +44879,7 @@ $export($export.P + $export.R, 'Promise', { 'finally': function (onFinally) {
 
 
 /***/ }),
-/* 443 */
+/* 447 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -44360,7 +44887,7 @@ $export($export.P + $export.R, 'Promise', { 'finally': function (onFinally) {
 // https://github.com/tc39/proposal-promise-try
 var $export = __webpack_require__(0);
 var newPromiseCapability = __webpack_require__(94);
-var perform = __webpack_require__(231);
+var perform = __webpack_require__(234);
 
 $export($export.S, 'Promise', { 'try': function (callbackfn) {
   var promiseCapability = newPromiseCapability.f(this);
@@ -44371,7 +44898,7 @@ $export($export.S, 'Promise', { 'try': function (callbackfn) {
 
 
 /***/ }),
-/* 444 */
+/* 448 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var metadata = __webpack_require__(30);
@@ -44385,7 +44912,7 @@ metadata.exp({ defineMetadata: function defineMetadata(metadataKey, metadataValu
 
 
 /***/ }),
-/* 445 */
+/* 449 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var metadata = __webpack_require__(30);
@@ -44406,7 +44933,7 @@ metadata.exp({ deleteMetadata: function deleteMetadata(metadataKey, target /* , 
 
 
 /***/ }),
-/* 446 */
+/* 450 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var metadata = __webpack_require__(30);
@@ -44429,11 +44956,11 @@ metadata.exp({ getMetadata: function getMetadata(metadataKey, target /* , target
 
 
 /***/ }),
-/* 447 */
+/* 451 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var Set = __webpack_require__(235);
-var from = __webpack_require__(244);
+var Set = __webpack_require__(238);
+var from = __webpack_require__(247);
 var metadata = __webpack_require__(30);
 var anObject = __webpack_require__(2);
 var getPrototypeOf = __webpack_require__(18);
@@ -44454,7 +44981,7 @@ metadata.exp({ getMetadataKeys: function getMetadataKeys(target /* , targetKey *
 
 
 /***/ }),
-/* 448 */
+/* 452 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var metadata = __webpack_require__(30);
@@ -44469,7 +44996,7 @@ metadata.exp({ getOwnMetadata: function getOwnMetadata(metadataKey, target /* , 
 
 
 /***/ }),
-/* 449 */
+/* 453 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var metadata = __webpack_require__(30);
@@ -44483,7 +45010,7 @@ metadata.exp({ getOwnMetadataKeys: function getOwnMetadataKeys(target /* , targe
 
 
 /***/ }),
-/* 450 */
+/* 454 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var metadata = __webpack_require__(30);
@@ -44505,7 +45032,7 @@ metadata.exp({ hasMetadata: function hasMetadata(metadataKey, target /* , target
 
 
 /***/ }),
-/* 451 */
+/* 455 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var metadata = __webpack_require__(30);
@@ -44520,7 +45047,7 @@ metadata.exp({ hasOwnMetadata: function hasOwnMetadata(metadataKey, target /* , 
 
 
 /***/ }),
-/* 452 */
+/* 456 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $metadata = __webpack_require__(30);
@@ -44541,7 +45068,7 @@ $metadata.exp({ metadata: function metadata(metadataKey, metadataValue) {
 
 
 /***/ }),
-/* 453 */
+/* 457 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/rwaldron/tc39-notes/blob/master/es6/2014-09/sept-25.md#510-globalasap-for-enqueuing-a-microtask
@@ -44559,7 +45086,7 @@ $export($export.G, {
 
 
 /***/ }),
-/* 454 */
+/* 458 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -44765,14 +45292,14 @@ __webpack_require__(41)('Observable');
 
 
 /***/ }),
-/* 455 */
+/* 459 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // ie9- setTimeout & setInterval additional parameters fix
 var global = __webpack_require__(3);
 var $export = __webpack_require__(0);
 var invoke = __webpack_require__(59);
-var partial = __webpack_require__(456);
+var partial = __webpack_require__(460);
 var navigator = global.navigator;
 var MSIE = !!navigator && /MSIE .\./.test(navigator.userAgent); // <- dirty ie9- check
 var wrap = function (set) {
@@ -44792,12 +45319,12 @@ $export($export.G + $export.B + $export.F * MSIE, {
 
 
 /***/ }),
-/* 456 */
+/* 460 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var path = __webpack_require__(457);
+var path = __webpack_require__(461);
 var invoke = __webpack_require__(59);
 var aFunction = __webpack_require__(11);
 module.exports = function (/* ...pargs */) {
@@ -44824,14 +45351,14 @@ module.exports = function (/* ...pargs */) {
 
 
 /***/ }),
-/* 457 */
+/* 461 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__(3);
 
 
 /***/ }),
-/* 458 */
+/* 462 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $export = __webpack_require__(0);
@@ -44843,7 +45370,7 @@ $export($export.G + $export.B, {
 
 
 /***/ }),
-/* 459 */
+/* 463 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var $iterators = __webpack_require__(91);
@@ -44907,7 +45434,7 @@ for (var collections = getKeys(DOMIterables), i = 0; i < collections.length; i++
 
 
 /***/ }),
-/* 460 */
+/* 464 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global) {/**
@@ -45647,29 +46174,29 @@ for (var collections = getKeys(DOMIterables), i = 0; i < collections.length; i++
   typeof self === "object" ? self : this
 );
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(54)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(49)))
 
 /***/ }),
-/* 461 */
+/* 465 */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(462);
+__webpack_require__(466);
 module.exports = __webpack_require__(23).RegExp.escape;
 
 
 /***/ }),
-/* 462 */
+/* 466 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // https://github.com/benjamingr/RexExp.escape
 var $export = __webpack_require__(0);
-var $re = __webpack_require__(463)(/[\\^$*+?.()|[\]{}]/g, '\\$&');
+var $re = __webpack_require__(467)(/[\\^$*+?.()|[\]{}]/g, '\\$&');
 
 $export($export.S, 'RegExp', { escape: function escape(it) { return $re(it); } });
 
 
 /***/ }),
-/* 463 */
+/* 467 */
 /***/ (function(module, exports) {
 
 module.exports = function (regExp, replace) {
@@ -45683,7 +46210,7 @@ module.exports = function (regExp, replace) {
 
 
 /***/ }),
-/* 464 */
+/* 468 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -55899,9 +56426,9 @@ jQuery.nodeName = nodeName;
 // https://github.com/jrburke/requirejs/wiki/Updating-existing-libraries#wiki-anon
 
 if ( true ) {
-	!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = function() {
+	!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
 		return jQuery;
-	}.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
+	}).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
 				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 }
 
@@ -55943,7 +56470,7 @@ return jQuery;
 
 
 /***/ }),
-/* 465 */
+/* 469 */
 /***/ (function(module, exports) {
 
 /*!
@@ -58326,21 +58853,21 @@ if (typeof jQuery === 'undefined') {
 
 
 /***/ }),
-/* 466 */
+/* 470 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__(467);
+module.exports = __webpack_require__(471);
 
 /***/ }),
-/* 467 */
+/* 471 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var utils = __webpack_require__(19);
-var bind = __webpack_require__(246);
-var Axios = __webpack_require__(469);
+var bind = __webpack_require__(249);
+var Axios = __webpack_require__(473);
 var defaults = __webpack_require__(96);
 
 /**
@@ -58374,15 +58901,15 @@ axios.create = function create(instanceConfig) {
 };
 
 // Expose Cancel & CancelToken
-axios.Cancel = __webpack_require__(250);
-axios.CancelToken = __webpack_require__(484);
-axios.isCancel = __webpack_require__(249);
+axios.Cancel = __webpack_require__(254);
+axios.CancelToken = __webpack_require__(487);
+axios.isCancel = __webpack_require__(253);
 
 // Expose all/spread
 axios.all = function all(promises) {
   return Promise.all(promises);
 };
-axios.spread = __webpack_require__(485);
+axios.spread = __webpack_require__(488);
 
 module.exports = axios;
 
@@ -58391,7 +58918,7 @@ module.exports.default = axios;
 
 
 /***/ }),
-/* 468 */
+/* 472 */
 /***/ (function(module, exports) {
 
 /*!
@@ -58418,7 +58945,7 @@ function isSlowBuffer (obj) {
 
 
 /***/ }),
-/* 469 */
+/* 473 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58426,10 +58953,8 @@ function isSlowBuffer (obj) {
 
 var defaults = __webpack_require__(96);
 var utils = __webpack_require__(19);
-var InterceptorManager = __webpack_require__(479);
-var dispatchRequest = __webpack_require__(480);
-var isAbsoluteURL = __webpack_require__(482);
-var combineURLs = __webpack_require__(483);
+var InterceptorManager = __webpack_require__(482);
+var dispatchRequest = __webpack_require__(483);
 
 /**
  * Create a new instance of Axios
@@ -58460,11 +58985,6 @@ Axios.prototype.request = function request(config) {
 
   config = utils.merge(defaults, this.defaults, { method: 'get' }, config);
   config.method = config.method.toLowerCase();
-
-  // Support baseURL config
-  if (config.baseURL && !isAbsoluteURL(config.url)) {
-    config.url = combineURLs(config.baseURL, config.url);
-  }
 
   // Hook up interceptors middleware
   var chain = [dispatchRequest, undefined];
@@ -58511,197 +59031,7 @@ module.exports = Axios;
 
 
 /***/ }),
-/* 470 */
-/***/ (function(module, exports) {
-
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-
-/***/ }),
-/* 471 */
+/* 474 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58720,13 +59050,13 @@ module.exports = function normalizeHeaderName(headers, normalizedName) {
 
 
 /***/ }),
-/* 472 */
+/* 475 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var createError = __webpack_require__(248);
+var createError = __webpack_require__(252);
 
 /**
  * Resolve or reject a Promise based on response status.
@@ -58753,7 +59083,7 @@ module.exports = function settle(resolve, reject, response) {
 
 
 /***/ }),
-/* 473 */
+/* 476 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58781,7 +59111,7 @@ module.exports = function enhanceError(error, config, code, request, response) {
 
 
 /***/ }),
-/* 474 */
+/* 477 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58856,13 +59186,22 @@ module.exports = function buildURL(url, params, paramsSerializer) {
 
 
 /***/ }),
-/* 475 */
+/* 478 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var utils = __webpack_require__(19);
+
+// Headers whose duplicates are ignored by node
+// c.f. https://nodejs.org/api/http.html#http_message_headers
+var ignoreDuplicateOf = [
+  'age', 'authorization', 'content-length', 'content-type', 'etag',
+  'expires', 'from', 'host', 'if-modified-since', 'if-unmodified-since',
+  'last-modified', 'location', 'max-forwards', 'proxy-authorization',
+  'referer', 'retry-after', 'user-agent'
+];
 
 /**
  * Parse headers into an object
@@ -58891,7 +59230,14 @@ module.exports = function parseHeaders(headers) {
     val = utils.trim(line.substr(i + 1));
 
     if (key) {
-      parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
+      if (parsed[key] && ignoreDuplicateOf.indexOf(key) >= 0) {
+        return;
+      }
+      if (key === 'set-cookie') {
+        parsed[key] = (parsed[key] ? parsed[key] : []).concat([val]);
+      } else {
+        parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
+      }
     }
   });
 
@@ -58900,7 +59246,7 @@ module.exports = function parseHeaders(headers) {
 
 
 /***/ }),
-/* 476 */
+/* 479 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -58975,7 +59321,7 @@ module.exports = (
 
 
 /***/ }),
-/* 477 */
+/* 480 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59018,7 +59364,7 @@ module.exports = btoa;
 
 
 /***/ }),
-/* 478 */
+/* 481 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59078,7 +59424,7 @@ module.exports = (
 
 
 /***/ }),
-/* 479 */
+/* 482 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59137,16 +59483,18 @@ module.exports = InterceptorManager;
 
 
 /***/ }),
-/* 480 */
+/* 483 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var utils = __webpack_require__(19);
-var transformData = __webpack_require__(481);
-var isCancel = __webpack_require__(249);
+var transformData = __webpack_require__(484);
+var isCancel = __webpack_require__(253);
 var defaults = __webpack_require__(96);
+var isAbsoluteURL = __webpack_require__(485);
+var combineURLs = __webpack_require__(486);
 
 /**
  * Throws a `Cancel` if cancellation has been requested.
@@ -59165,6 +59513,11 @@ function throwIfCancellationRequested(config) {
  */
 module.exports = function dispatchRequest(config) {
   throwIfCancellationRequested(config);
+
+  // Support baseURL config
+  if (config.baseURL && !isAbsoluteURL(config.url)) {
+    config.url = combineURLs(config.baseURL, config.url);
+  }
 
   // Ensure headers exist
   config.headers = config.headers || {};
@@ -59223,7 +59576,7 @@ module.exports = function dispatchRequest(config) {
 
 
 /***/ }),
-/* 481 */
+/* 484 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59250,7 +59603,7 @@ module.exports = function transformData(data, headers, fns) {
 
 
 /***/ }),
-/* 482 */
+/* 485 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59271,7 +59624,7 @@ module.exports = function isAbsoluteURL(url) {
 
 
 /***/ }),
-/* 483 */
+/* 486 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59292,13 +59645,13 @@ module.exports = function combineURLs(baseURL, relativeURL) {
 
 
 /***/ }),
-/* 484 */
+/* 487 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var Cancel = __webpack_require__(250);
+var Cancel = __webpack_require__(254);
 
 /**
  * A `CancelToken` is an object that can be used to request cancellation of an operation.
@@ -59356,7 +59709,7 @@ module.exports = CancelToken;
 
 
 /***/ }),
-/* 485 */
+/* 488 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -59390,28 +59743,30 @@ module.exports = function spread(callback) {
 
 
 /***/ }),
-/* 486 */
+/* 489 */,
+/* 490 */,
+/* 491 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_vue_router__ = __webpack_require__(252);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_vue_router__ = __webpack_require__(256);
 
 
 var routes = [{
     path: '/',
     alias: '/cats',
-    component: __webpack_require__(253),
+    component: __webpack_require__(257),
     query: {
         page: 1,
         hightlight: null
     }
 }, {
     path: '/cats/create',
-    component: __webpack_require__(503)
+    component: __webpack_require__(508)
 }, {
     name: 'catEdit',
     path: '/cats/:id/edit',
-    component: __webpack_require__(508)
+    component: __webpack_require__(513)
 }];
 
 /* harmony default export */ __webpack_exports__["a"] = (new __WEBPACK_IMPORTED_MODULE_0_vue_router__["a" /* default */]({
@@ -59419,23 +59774,23 @@ var routes = [{
 }));
 
 /***/ }),
-/* 487 */
+/* 492 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(488);
+var content = __webpack_require__(493);
 if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
-var update = __webpack_require__(53)("59ca829e", content, false);
+var update = __webpack_require__(54)("5e184709", content, false);
 // Hot Module Replacement
 if(false) {
  // When the styles change, update the <style> tags
  if(!content.locals) {
-   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-564b89c9\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./CatIndex.vue", function() {
-     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-564b89c9\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./CatIndex.vue");
+   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-4676f9d3\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./CatIndex.vue", function() {
+     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-4676f9d3\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./CatIndex.vue");
      if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
      update(newContent);
    });
@@ -59445,10 +59800,10 @@ if(false) {
 }
 
 /***/ }),
-/* 488 */
+/* 493 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(52)(undefined);
+exports = module.exports = __webpack_require__(53)(undefined);
 // imports
 
 
@@ -59459,7 +59814,7 @@ exports.push([module.i, "\n.toolbox {\n    margin-bottom: 1em;\n}\n", ""]);
 
 
 /***/ }),
-/* 489 */
+/* 494 */
 /***/ (function(module, exports) {
 
 /**
@@ -59492,7 +59847,7 @@ module.exports = function listToStyles (parentId, list) {
 
 
 /***/ }),
-/* 490 */
+/* 495 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -59548,8 +59903,8 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 
     components: {
-        'cat-item': __webpack_require__(491),
-        'pagination': __webpack_require__(499)
+        'cat-item': __webpack_require__(496),
+        'pagination': __webpack_require__(504)
     },
 
     watch: {
@@ -59583,29 +59938,37 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 491 */
+/* 496 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
 function injectStyle (ssrContext) {
   if (disposed) return
-  __webpack_require__(492)
+  __webpack_require__(497)
 }
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(494),
-  /* template */
-  __webpack_require__(498),
-  /* styles */
-  injectStyle,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(499)
+/* template */
+var __vue_template__ = __webpack_require__(503)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = injectStyle
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/CatItem.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] CatItem.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/CatItem.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -59614,10 +59977,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-62d3c628", Component.options)
+    hotAPI.createRecord("data-v-42d0f8bc", Component.options)
   } else {
-    hotAPI.reload("data-v-62d3c628", Component.options)
-  }
+    hotAPI.reload("data-v-42d0f8bc", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -59627,23 +59990,23 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 492 */
+/* 497 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(493);
+var content = __webpack_require__(498);
 if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
-var update = __webpack_require__(53)("2c8564a2", content, false);
+var update = __webpack_require__(54)("3704f7c0", content, false);
 // Hot Module Replacement
 if(false) {
  // When the styles change, update the <style> tags
  if(!content.locals) {
-   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-62d3c628\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./CatItem.vue", function() {
-     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-62d3c628\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./CatItem.vue");
+   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-42d0f8bc\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./CatItem.vue", function() {
+     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-42d0f8bc\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./CatItem.vue");
      if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
      update(newContent);
    });
@@ -59653,21 +60016,21 @@ if(false) {
 }
 
 /***/ }),
-/* 493 */
+/* 498 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(52)(undefined);
+exports = module.exports = __webpack_require__(53)(undefined);
 // imports
 
 
 // module
-exports.push([module.i, "\n.cat-pic {\n    max-width: 64px;\n    max-height: 64px;\n}\n.open-close-btn {\n    transition: transform 500ms;\n}\n.rotated {\n    transform: rotate(180deg);\n}\n.rm1 {\n    margin-right: 0.4em;\n}\n", ""]);
+exports.push([module.i, "\n.cat-pic {\n    max-width: 64px;\n    max-height: 64px;\n}\n.open-close-btn {\n    -webkit-transition: -webkit-transform 500ms;\n    transition: -webkit-transform 500ms;\n    transition: transform 500ms;\n    transition: transform 500ms, -webkit-transform 500ms;\n}\n.rotated {\n    -webkit-transform: rotate(180deg);\n            transform: rotate(180deg);\n}\n.rm1 {\n    margin-right: 0.4em;\n}\n", ""]);
 
 // exports
 
 
 /***/ }),
-/* 494 */
+/* 499 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -59832,7 +60195,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
     },
 
     components: {
-        'cat-detail-row': __webpack_require__(495),
+        'cat-detail-row': __webpack_require__(500),
         'cat-detail-tab': { template: '<div><slot></slot></div>' }
     },
 
@@ -59857,25 +60220,33 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 495 */
+/* 500 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(496),
-  /* template */
-  __webpack_require__(497),
-  /* styles */
-  null,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(501)
+/* template */
+var __vue_template__ = __webpack_require__(502)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = null
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/CatDetailRow.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] CatDetailRow.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/CatDetailRow.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -59884,10 +60255,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-5cc441c0", Component.options)
+    hotAPI.createRecord("data-v-6a449cca", Component.options)
   } else {
-    hotAPI.reload("data-v-5cc441c0", Component.options)
-  }
+    hotAPI.reload("data-v-6a449cca", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -59897,7 +60268,7 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 496 */
+/* 501 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -59917,449 +60288,987 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 497 */
+/* 502 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "row"
-  }, [_c('div', {
-    staticClass: "col-sm-3"
-  }, [_c('strong', [_vm._v(_vm._s(_vm.label))])]), _vm._v(" "), _c('div', {
-    staticClass: "col-sm-9"
-  }, [_vm._t("default")], 2)])
-},staticRenderFns: []}
-module.exports.render._withStripped = true
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c("div", { staticClass: "row" }, [
+    _c("div", { staticClass: "col-sm-3" }, [
+      _c("strong", [_vm._v(_vm._s(_vm.label))])
+    ]),
+    _vm._v(" "),
+    _c("div", { staticClass: "col-sm-9" }, [_vm._t("default")], 2)
+  ])
+}
+var staticRenderFns = []
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-5cc441c0", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-6a449cca", module.exports)
   }
 }
 
 /***/ }),
-/* 498 */
+/* 503 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel panel-default",
-    class: {
-      'panel-success': _vm.highlight
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c(
+    "div",
+    {
+      staticClass: "panel panel-default",
+      class: { "panel-success": _vm.highlight },
+      attrs: { "data-cat-id": _vm.cat.id }
     },
-    attrs: {
-      "data-cat-id": _vm.cat.id
-    }
-  }, [(_vm.highlight) ? _c('div', {
-    staticClass: "panel-heading"
-  }, [_vm._v("\n        Neu\n    ")]) : _vm._e(), _vm._v(" "), _c('div', {
-    staticClass: "panel-body"
-  }, [_c('ul', {
-    staticClass: "media-list"
-  }, [_c('li', {
-    staticClass: "media"
-  }, [_c('button', {
-    staticClass: " close",
-    attrs: {
-      "type": "button",
-      "aria-label": "Show",
-      "data-toggle": "tooltip",
-      "data-placement": "bottom",
-      "title": "alle Daten anzeigen"
-    },
-    on: {
-      "click": _vm.toggle
-    }
-  }, [_c('span', {
-    staticClass: "open-close-btn glyphicon glyphicon-chevron-down",
-    class: {
-      'rotated': _vm.showDetails
-    },
-    attrs: {
-      "aria-hidden": "true"
-    }
-  })]), _vm._v(" "), _c('router-link', {
-    staticClass: "close rm1",
-    attrs: {
-      "to": {
-        name: 'catEdit',
-        params: {
-          id: _vm.cat.id
-        }
-      }
-    }
-  }, [_c('span', {
-    staticClass: "open-close-btn glyphicon glyphicon-edit",
-    attrs: {
-      "aria-hidden": "true"
-    }
-  })]), _vm._v(" "), _c('transition', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, [(!_vm.showDetails) ? _c('div', {
-    key: "101"
-  }, [(_vm.photoSrc !== null) ? _c('div', {
-    staticClass: "media-left"
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    }
-  }, [_c('img', {
-    staticClass: "media-object cat-pic",
-    attrs: {
-      "src": _vm.photoSrc
-    }
-  })])]) : _vm._e(), _vm._v(" "), _c('div', {
-    staticClass: "media-body"
-  }, [_c('h4', {
-    staticClass: "media-heading"
-  }, [_vm._v(_vm._s(_vm.cat.key) + " " + _vm._s(_vm.cat.name))]), _vm._v(" "), _c('small', [_c('i', [_vm._v("Eingetragen am: " + _vm._s(_vm.moment(_vm.cat.created_at).format(_vm.momentDateFormat)))])]), _c('br'), _vm._v("\n                            " + _vm._s(_vm.cat.color) + "\n                        ")])]) : _c('div', {
-    key: "102"
-  }, [_c('ul', {
-    staticClass: "nav nav-tabs"
-  }, [_c('li', {
-    class: {
-      'active': _vm.activeTab == 'basisdaten'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('basisdaten')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Basisdaten")])]), _vm._v(" "), _c('li', {
-    class: {
-      'active': _vm.activeTab == 'aufnahme-und-abgabe'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('aufnahme-und-abgabe')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Aufnahme und Abgabe")])]), _vm._v(" "), _c('li', {
-    class: {
-      'active': _vm.activeTab == 'aufenthaltsort'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('aufenthaltsort')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Aufenthaltsort")])]), _vm._v(" "), _c('li', {
-    class: {
-      'active': _vm.activeTab == 'kastration'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('kastration')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Kastration")])]), _vm._v(" "), _c('li', {
-    class: {
-      'active': _vm.activeTab == 'impfungen'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('impfungen')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Impfungen")])]), _vm._v(" "), _c('li', {
-    class: {
-      'active': _vm.activeTab == 'tattoo'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('tattoo')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Tätowierung")])]), _vm._v(" "), _c('li', {
-    class: {
-      'active': _vm.activeTab == 'kommentare-und-merkmale'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('kommentare-und-merkmale')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Kommentare und Merkmale")])]), _vm._v(" "), _c('li', {
-    class: {
-      'active': _vm.activeTab == 'todesfall'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('todesfall')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Todesfall")])]), _vm._v(" "), _c('li', {
-    class: {
-      'active': _vm.activeTab == 'eigenschaften'
-    },
-    on: {
-      "click": function($event) {
-        _vm.setActiveTab('eigenschaften')
-      }
-    }
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-      }
-    }
-  }, [_vm._v("Eigenschaften")])])]), _vm._v(" "), _c('transition', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, [(_vm.activeTab == 'basisdaten') ? _c('div', {
-    key: "1",
-    attrs: {
-      "id": "basisdaten"
-    }
-  }, [_c('h2', [_vm._v("Basisdaten")]), _vm._v(" "), (_vm.photoSrc !== null) ? _c('div', {
-    staticClass: "media-left"
-  }, [_c('a', {
-    attrs: {
-      "href": "#"
-    }
-  }, [_c('img', {
-    staticClass: "media-object cat-pic",
-    attrs: {
-      "src": _vm.photoSrc
-    }
-  })])]) : _vm._e(), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Name"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.name || 'keiner angegeben'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Rasse"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.breed || 'keine angegeben'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Farbe"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.color))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Geburtsdatum"
-    }
-  }, [_vm._v(_vm._s(_vm.moment(_vm.cat.date_of_birth).isValid() ? _vm.moment(_vm.cat.date_of_birth).format(_vm.momentDateFormat) : 'keins angegeben'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Geschlecht"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.is_male ? 'männlich' : 'weiblich'))])], 1) : _vm._e(), _vm._v(" "), (_vm.activeTab == 'aufnahme-und-abgabe') ? _c('div', {
-    key: "2",
-    staticClass: "aufnahme-und-abgabe"
-  }, [_c('h2', [_vm._v("Aufnahme und Abgabe")]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Aufnahmedatum"
-    }
-  }, [_vm._v(_vm._s(_vm.moment(_vm.cat.registration_date).isValid() ? _vm.moment(_vm.cat.registration_date).format(_vm.momentDateFormat) : 'keins angegeben'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Abgabedatum"
-    }
-  }, [_vm._v(_vm._s(_vm.moment(_vm.cat.leave_date).isValid() ? _vm.moment(_vm.cat.leave_date).format(_vm.momentDateFormat) : 'keins angegeben'))])], 1) : _vm._e(), _vm._v(" "), (_vm.activeTab == 'aufenthaltsort') ? _c('div', {
-    key: "3",
-    staticClass: "aufenthaltsort"
-  }, [_c('h2', [_vm._v("Aufenthaltsort")]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Ortsname"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.location || 'keiner angegeben'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Straße und Hausnummer"
-    }
-  }, [_vm._v(_vm._s(_vm.streetAndNr || 'keine angegeben'))])], 1) : _vm._e(), _vm._v(" "), (_vm.activeTab == 'kastration') ? _c('div', {
-    key: "4",
-    staticClass: "kastration"
-  }, [_c('h2', [_vm._v("Kastration")]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Kastriert"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.is_castrated ? 'ja' : 'nein'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Kastrationsdatum"
-    }
-  }, [_vm._v(_vm._s(_vm.moment(_vm.cat.castration_date).isValid() ? _vm.moment(_vm.cat.castration_date).format(_vm.momentDateFormat) : 'keins angegeben'))])], 1) : _vm._e(), _vm._v(" "), (_vm.activeTab == 'impfungen') ? _c('div', {
-    key: "5",
-    staticClass: "impfungen"
-  }, [_c('h2', [_vm._v("Impfungen")]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "1. Impfung"
-    }
-  }, [_vm._v(_vm._s(_vm.moment(_vm.cat.first_vacciation).isValid() ? _vm.moment(_vm.cat.first_vacciation).format(_vm.momentDateFormat) : 'keine Angabe'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "2. Impfung"
-    }
-  }, [_vm._v(_vm._s(_vm.moment(_vm.cat.second_vacciation).isValid() ? _vm.moment(_vm.cat.second_vacciation).format(_vm.momentDateFormat) : 'keine Angabe'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Nächste Impfung"
-    }
-  }, [_vm._v(_vm._s(_vm.moment(_vm.cat.next_vacciation).isValid() ? _vm.moment(_vm.cat.next_vacciation).format(_vm.momentDateFormat) : 'keine Angabe'))])], 1) : _vm._e(), _vm._v(" "), (_vm.activeTab == 'tattoo') ? _c('div', {
-    key: "6",
-    staticClass: "tattoo"
-  }, [_c('h2', [_vm._v("Tätowierung")]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Tätowierung links"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.tattoo_left || 'keins vorhanden'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Tätowierung links"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.tattoo_right || 'keins vorhanden'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Chip"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.chip || 'keiner vorhanden'))])], 1) : _vm._e(), _vm._v(" "), (_vm.activeTab == 'kommentare-und-merkmale') ? _c('div', {
-    key: "7",
-    staticClass: "kommentare-und-merkmale"
-  }, [_c('h2', [_vm._v("Kommentare und Merkmale")]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Merkmale"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.distinguishing_marks || 'keine angegeben'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Kommentare"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.comments || 'keine angegeben'))])], 1) : _vm._e(), _vm._v(" "), (_vm.activeTab == 'todesfall') ? _c('div', {
-    key: "8",
-    staticClass: "todesfall"
-  }, [_c('h2', [_vm._v("Todesfall")]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Verstorben"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.deceased))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Todesursache"
-    }
-  }, [_vm._v(_vm._s(_vm.cause_of_death || 'keiner angegeben'))])], 1) : _vm._e(), _vm._v(" "), (_vm.activeTab == 'eigenschaften') ? _c('div', {
-    key: "9",
-    staticClass: "eigenschaften"
-  }, [_c('h2', [_vm._v("Eigenschaften")]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Außenkatze"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.is_outdoor_cat ? 'ja' : 'nein'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Innenkatze"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.is_indoor_cat ? 'ja' : 'nein'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Katzenfreundlich"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.is_cat_friendly ? 'ja' : 'nein'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Hundefreundlich"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.is_dog_friendly ? 'ja' : 'nein'))]), _vm._v(" "), _c('cat-detail-row', {
-    attrs: {
-      "label": "Kinderfreundlich"
-    }
-  }, [_vm._v(_vm._s(_vm.cat.is_child_friendly ? 'ja' : 'nein'))])], 1) : _vm._e()])], 1)])], 1)])])])
-},staticRenderFns: []}
-module.exports.render._withStripped = true
+    [
+      _vm.highlight
+        ? _c("div", { staticClass: "panel-heading" }, [
+            _vm._v("\n        Neu\n    ")
+          ])
+        : _vm._e(),
+      _vm._v(" "),
+      _c("div", { staticClass: "panel-body" }, [
+        _c("ul", { staticClass: "media-list" }, [
+          _c(
+            "li",
+            { staticClass: "media" },
+            [
+              _c(
+                "button",
+                {
+                  staticClass: " close",
+                  attrs: {
+                    type: "button",
+                    "aria-label": "Show",
+                    "data-toggle": "tooltip",
+                    "data-placement": "bottom",
+                    title: "alle Daten anzeigen"
+                  },
+                  on: { click: _vm.toggle }
+                },
+                [
+                  _c("span", {
+                    staticClass:
+                      "open-close-btn glyphicon glyphicon-chevron-down",
+                    class: { rotated: _vm.showDetails },
+                    attrs: { "aria-hidden": "true" }
+                  })
+                ]
+              ),
+              _vm._v(" "),
+              _c(
+                "router-link",
+                {
+                  staticClass: "close rm1",
+                  attrs: { to: { name: "catEdit", params: { id: _vm.cat.id } } }
+                },
+                [
+                  _c("span", {
+                    staticClass: "open-close-btn glyphicon glyphicon-edit",
+                    attrs: { "aria-hidden": "true" }
+                  })
+                ]
+              ),
+              _vm._v(" "),
+              _c(
+                "transition",
+                { attrs: { name: "component-fade", mode: "out-in" } },
+                [
+                  !_vm.showDetails
+                    ? _c("div", { key: "101" }, [
+                        _vm.photoSrc !== null
+                          ? _c("div", { staticClass: "media-left" }, [
+                              _c("a", { attrs: { href: "#" } }, [
+                                _c("img", {
+                                  staticClass: "media-object cat-pic",
+                                  attrs: { src: _vm.photoSrc }
+                                })
+                              ])
+                            ])
+                          : _vm._e(),
+                        _vm._v(" "),
+                        _c("div", { staticClass: "media-body" }, [
+                          _c("h4", { staticClass: "media-heading" }, [
+                            _vm._v(
+                              _vm._s(_vm.cat.key) + " " + _vm._s(_vm.cat.name)
+                            )
+                          ]),
+                          _vm._v(" "),
+                          _c("small", [
+                            _c("i", [
+                              _vm._v(
+                                "Eingetragen am: " +
+                                  _vm._s(
+                                    _vm
+                                      .moment(_vm.cat.created_at)
+                                      .format(_vm.momentDateFormat)
+                                  )
+                              )
+                            ])
+                          ]),
+                          _c("br"),
+                          _vm._v(
+                            "\n                            " +
+                              _vm._s(_vm.cat.color) +
+                              "\n                        "
+                          )
+                        ])
+                      ])
+                    : _c(
+                        "div",
+                        { key: "102" },
+                        [
+                          _c("ul", { staticClass: "nav nav-tabs" }, [
+                            _c(
+                              "li",
+                              {
+                                class: {
+                                  active: _vm.activeTab == "basisdaten"
+                                },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("basisdaten")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Basisdaten")]
+                                )
+                              ]
+                            ),
+                            _vm._v(" "),
+                            _c(
+                              "li",
+                              {
+                                class: {
+                                  active: _vm.activeTab == "aufnahme-und-abgabe"
+                                },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("aufnahme-und-abgabe")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Aufnahme und Abgabe")]
+                                )
+                              ]
+                            ),
+                            _vm._v(" "),
+                            _c(
+                              "li",
+                              {
+                                class: {
+                                  active: _vm.activeTab == "aufenthaltsort"
+                                },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("aufenthaltsort")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Aufenthaltsort")]
+                                )
+                              ]
+                            ),
+                            _vm._v(" "),
+                            _c(
+                              "li",
+                              {
+                                class: {
+                                  active: _vm.activeTab == "kastration"
+                                },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("kastration")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Kastration")]
+                                )
+                              ]
+                            ),
+                            _vm._v(" "),
+                            _c(
+                              "li",
+                              {
+                                class: { active: _vm.activeTab == "impfungen" },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("impfungen")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Impfungen")]
+                                )
+                              ]
+                            ),
+                            _vm._v(" "),
+                            _c(
+                              "li",
+                              {
+                                class: { active: _vm.activeTab == "tattoo" },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("tattoo")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Tätowierung")]
+                                )
+                              ]
+                            ),
+                            _vm._v(" "),
+                            _c(
+                              "li",
+                              {
+                                class: {
+                                  active:
+                                    _vm.activeTab == "kommentare-und-merkmale"
+                                },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("kommentare-und-merkmale")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Kommentare und Merkmale")]
+                                )
+                              ]
+                            ),
+                            _vm._v(" "),
+                            _c(
+                              "li",
+                              {
+                                class: { active: _vm.activeTab == "todesfall" },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("todesfall")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Todesfall")]
+                                )
+                              ]
+                            ),
+                            _vm._v(" "),
+                            _c(
+                              "li",
+                              {
+                                class: {
+                                  active: _vm.activeTab == "eigenschaften"
+                                },
+                                on: {
+                                  click: function($event) {
+                                    _vm.setActiveTab("eigenschaften")
+                                  }
+                                }
+                              },
+                              [
+                                _c(
+                                  "a",
+                                  {
+                                    attrs: { href: "#" },
+                                    on: {
+                                      click: function($event) {
+                                        $event.preventDefault()
+                                      }
+                                    }
+                                  },
+                                  [_vm._v("Eigenschaften")]
+                                )
+                              ]
+                            )
+                          ]),
+                          _vm._v(" "),
+                          _c(
+                            "transition",
+                            {
+                              attrs: { name: "component-fade", mode: "out-in" }
+                            },
+                            [
+                              _vm.activeTab == "basisdaten"
+                                ? _c(
+                                    "div",
+                                    { key: "1", attrs: { id: "basisdaten" } },
+                                    [
+                                      _c("h2", [_vm._v("Basisdaten")]),
+                                      _vm._v(" "),
+                                      _vm.photoSrc !== null
+                                        ? _c(
+                                            "div",
+                                            { staticClass: "media-left" },
+                                            [
+                                              _c(
+                                                "a",
+                                                { attrs: { href: "#" } },
+                                                [
+                                                  _c("img", {
+                                                    staticClass:
+                                                      "media-object cat-pic",
+                                                    attrs: { src: _vm.photoSrc }
+                                                  })
+                                                ]
+                                              )
+                                            ]
+                                          )
+                                        : _vm._e(),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Name" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.name || "keiner angegeben"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Rasse" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.breed || "keine angegeben"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Farbe" } },
+                                        [_vm._v(_vm._s(_vm.cat.color))]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Geburtsdatum" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm
+                                                .moment(_vm.cat.date_of_birth)
+                                                .isValid()
+                                                ? _vm
+                                                    .moment(
+                                                      _vm.cat.date_of_birth
+                                                    )
+                                                    .format(
+                                                      _vm.momentDateFormat
+                                                    )
+                                                : "keins angegeben"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Geschlecht" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.is_male
+                                                ? "männlich"
+                                                : "weiblich"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e(),
+                              _vm._v(" "),
+                              _vm.activeTab == "aufnahme-und-abgabe"
+                                ? _c(
+                                    "div",
+                                    {
+                                      key: "2",
+                                      staticClass: "aufnahme-und-abgabe"
+                                    },
+                                    [
+                                      _c("h2", [_vm._v("Aufnahme und Abgabe")]),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Aufnahmedatum" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm
+                                                .moment(
+                                                  _vm.cat.registration_date
+                                                )
+                                                .isValid()
+                                                ? _vm
+                                                    .moment(
+                                                      _vm.cat.registration_date
+                                                    )
+                                                    .format(
+                                                      _vm.momentDateFormat
+                                                    )
+                                                : "keins angegeben"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Abgabedatum" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm
+                                                .moment(_vm.cat.leave_date)
+                                                .isValid()
+                                                ? _vm
+                                                    .moment(_vm.cat.leave_date)
+                                                    .format(
+                                                      _vm.momentDateFormat
+                                                    )
+                                                : "keins angegeben"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e(),
+                              _vm._v(" "),
+                              _vm.activeTab == "aufenthaltsort"
+                                ? _c(
+                                    "div",
+                                    { key: "3", staticClass: "aufenthaltsort" },
+                                    [
+                                      _c("h2", [_vm._v("Aufenthaltsort")]),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Ortsname" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.location ||
+                                                "keiner angegeben"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        {
+                                          attrs: {
+                                            label: "Straße und Hausnummer"
+                                          }
+                                        },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.streetAndNr ||
+                                                "keine angegeben"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e(),
+                              _vm._v(" "),
+                              _vm.activeTab == "kastration"
+                                ? _c(
+                                    "div",
+                                    { key: "4", staticClass: "kastration" },
+                                    [
+                                      _c("h2", [_vm._v("Kastration")]),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Kastriert" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.is_castrated
+                                                ? "ja"
+                                                : "nein"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        {
+                                          attrs: { label: "Kastrationsdatum" }
+                                        },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm
+                                                .moment(_vm.cat.castration_date)
+                                                .isValid()
+                                                ? _vm
+                                                    .moment(
+                                                      _vm.cat.castration_date
+                                                    )
+                                                    .format(
+                                                      _vm.momentDateFormat
+                                                    )
+                                                : "keins angegeben"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e(),
+                              _vm._v(" "),
+                              _vm.activeTab == "impfungen"
+                                ? _c(
+                                    "div",
+                                    { key: "5", staticClass: "impfungen" },
+                                    [
+                                      _c("h2", [_vm._v("Impfungen")]),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "1. Impfung" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm
+                                                .moment(
+                                                  _vm.cat.first_vacciation
+                                                )
+                                                .isValid()
+                                                ? _vm
+                                                    .moment(
+                                                      _vm.cat.first_vacciation
+                                                    )
+                                                    .format(
+                                                      _vm.momentDateFormat
+                                                    )
+                                                : "keine Angabe"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "2. Impfung" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm
+                                                .moment(
+                                                  _vm.cat.second_vacciation
+                                                )
+                                                .isValid()
+                                                ? _vm
+                                                    .moment(
+                                                      _vm.cat.second_vacciation
+                                                    )
+                                                    .format(
+                                                      _vm.momentDateFormat
+                                                    )
+                                                : "keine Angabe"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Nächste Impfung" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm
+                                                .moment(_vm.cat.next_vacciation)
+                                                .isValid()
+                                                ? _vm
+                                                    .moment(
+                                                      _vm.cat.next_vacciation
+                                                    )
+                                                    .format(
+                                                      _vm.momentDateFormat
+                                                    )
+                                                : "keine Angabe"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e(),
+                              _vm._v(" "),
+                              _vm.activeTab == "tattoo"
+                                ? _c(
+                                    "div",
+                                    { key: "6", staticClass: "tattoo" },
+                                    [
+                                      _c("h2", [_vm._v("Tätowierung")]),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        {
+                                          attrs: { label: "Tätowierung links" }
+                                        },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.tattoo_left ||
+                                                "keins vorhanden"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        {
+                                          attrs: { label: "Tätowierung links" }
+                                        },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.tattoo_right ||
+                                                "keins vorhanden"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Chip" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.chip || "keiner vorhanden"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e(),
+                              _vm._v(" "),
+                              _vm.activeTab == "kommentare-und-merkmale"
+                                ? _c(
+                                    "div",
+                                    {
+                                      key: "7",
+                                      staticClass: "kommentare-und-merkmale"
+                                    },
+                                    [
+                                      _c("h2", [
+                                        _vm._v("Kommentare und Merkmale")
+                                      ]),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Merkmale" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.distinguishing_marks ||
+                                                "keine angegeben"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Kommentare" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.comments ||
+                                                "keine angegeben"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e(),
+                              _vm._v(" "),
+                              _vm.activeTab == "todesfall"
+                                ? _c(
+                                    "div",
+                                    { key: "8", staticClass: "todesfall" },
+                                    [
+                                      _c("h2", [_vm._v("Todesfall")]),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Verstorben" } },
+                                        [_vm._v(_vm._s(_vm.cat.deceased))]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Todesursache" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cause_of_death ||
+                                                "keiner angegeben"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e(),
+                              _vm._v(" "),
+                              _vm.activeTab == "eigenschaften"
+                                ? _c(
+                                    "div",
+                                    { key: "9", staticClass: "eigenschaften" },
+                                    [
+                                      _c("h2", [_vm._v("Eigenschaften")]),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Außenkatze" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.is_outdoor_cat
+                                                ? "ja"
+                                                : "nein"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Innenkatze" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.is_indoor_cat
+                                                ? "ja"
+                                                : "nein"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        {
+                                          attrs: { label: "Katzenfreundlich" }
+                                        },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.is_cat_friendly
+                                                ? "ja"
+                                                : "nein"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        { attrs: { label: "Hundefreundlich" } },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.is_dog_friendly
+                                                ? "ja"
+                                                : "nein"
+                                            )
+                                          )
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "cat-detail-row",
+                                        {
+                                          attrs: { label: "Kinderfreundlich" }
+                                        },
+                                        [
+                                          _vm._v(
+                                            _vm._s(
+                                              _vm.cat.is_child_friendly
+                                                ? "ja"
+                                                : "nein"
+                                            )
+                                          )
+                                        ]
+                                      )
+                                    ],
+                                    1
+                                  )
+                                : _vm._e()
+                            ]
+                          )
+                        ],
+                        1
+                      )
+                ]
+              )
+            ],
+            1
+          )
+        ])
+      ])
+    ]
+  )
+}
+var staticRenderFns = []
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-62d3c628", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-42d0f8bc", module.exports)
   }
 }
 
 /***/ }),
-/* 499 */
+/* 504 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(500),
-  /* template */
-  __webpack_require__(501),
-  /* styles */
-  null,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(505)
+/* template */
+var __vue_template__ = __webpack_require__(506)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = null
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/Pagination.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] Pagination.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/Pagination.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -60368,10 +61277,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-50a59287", Component.options)
+    hotAPI.createRecord("data-v-3895afde", Component.options)
   } else {
-    hotAPI.reload("data-v-50a59287", Component.options)
-  }
+    hotAPI.reload("data-v-3895afde", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -60381,7 +61290,7 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 500 */
+/* 505 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -60430,169 +61339,218 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 501 */
+/* 506 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('nav', {
-    attrs: {
-      "aria-label": "Page navigation"
-    }
-  }, [_c('ul', {
-    staticClass: "pagination"
-  }, [_c('li', {
-    class: {
-      'disabled': _vm.data.prev_page_url == null
-    }
-  }, [_c('router-link', {
-    attrs: {
-      "to": {
-        path: _vm.path,
-        query: {
-          page: _vm.prev_page
-        }
-      },
-      "aria-label": "Previous"
-    }
-  }, [_c('span', {
-    attrs: {
-      "aria-hidden": "true"
-    }
-  }, [_vm._v("«")])])], 1), _vm._v(" "), _vm._l((_vm.pages), function(page) {
-    return _c('li', {
-      key: page,
-      class: {
-        'active': _vm.data.current_page == page
-      }
-    }, [_c('router-link', {
-      attrs: {
-        "to": {
-          path: _vm.path,
-          query: {
-            page: page
-          }
-        },
-        "aria-label": "Previous"
-      }
-    }, [_vm._v("\n                " + _vm._s(page) + " "), _c('span', {
-      staticClass: "sr-only"
-    }, [_vm._v("(current)")])])], 1)
-  }), _vm._v(" "), _c('li', {
-    class: {
-      'disabled': _vm.data.next_page_url == null
-    }
-  }, [_c('router-link', {
-    attrs: {
-      "to": {
-        path: _vm.path,
-        query: {
-          page: _vm.next_page
-        }
-      },
-      "aria-label": "Next"
-    }
-  }, [_c('span', {
-    attrs: {
-      "aria-hidden": "true"
-    }
-  }, [_vm._v("»")])])], 1)], 2)])
-},staticRenderFns: []}
-module.exports.render._withStripped = true
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c("nav", { attrs: { "aria-label": "Page navigation" } }, [
+    _c(
+      "ul",
+      { staticClass: "pagination" },
+      [
+        _c(
+          "li",
+          { class: { disabled: _vm.data.prev_page_url == null } },
+          [
+            _c(
+              "router-link",
+              {
+                attrs: {
+                  to: { path: _vm.path, query: { page: _vm.prev_page } },
+                  "aria-label": "Previous"
+                }
+              },
+              [_c("span", { attrs: { "aria-hidden": "true" } }, [_vm._v("«")])]
+            )
+          ],
+          1
+        ),
+        _vm._v(" "),
+        _vm._l(_vm.pages, function(page) {
+          return _c(
+            "li",
+            { key: page, class: { active: _vm.data.current_page == page } },
+            [
+              _c(
+                "router-link",
+                {
+                  attrs: {
+                    to: { path: _vm.path, query: { page: page } },
+                    "aria-label": "Previous"
+                  }
+                },
+                [
+                  _vm._v("\n                " + _vm._s(page) + " "),
+                  _c("span", { staticClass: "sr-only" }, [_vm._v("(current)")])
+                ]
+              )
+            ],
+            1
+          )
+        }),
+        _vm._v(" "),
+        _c(
+          "li",
+          { class: { disabled: _vm.data.next_page_url == null } },
+          [
+            _c(
+              "router-link",
+              {
+                attrs: {
+                  to: { path: _vm.path, query: { page: _vm.next_page } },
+                  "aria-label": "Next"
+                }
+              },
+              [_c("span", { attrs: { "aria-hidden": "true" } }, [_vm._v("»")])]
+            )
+          ],
+          1
+        )
+      ],
+      2
+    )
+  ])
+}
+var staticRenderFns = []
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-50a59287", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-3895afde", module.exports)
   }
 }
 
 /***/ }),
-/* 502 */
+/* 507 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', [_c('div', {
-    staticClass: "row"
-  }, [_c('div', {
-    staticClass: "col-md-8 col-md-offset-2 toolbox"
-  }, [_c('router-link', {
-    staticClass: "btn btn-success pull-right",
-    attrs: {
-      "to": "/cats/create"
-    }
-  }, [_vm._v("Katze aufnehmen")]), _vm._v(" "), (_vm.response != null) ? _c('pagination', {
-    attrs: {
-      "data": _vm.response
-    }
-  }) : _vm._e()], 1)]), _vm._v(" "), (_vm.error.length) ? _c('div', {
-    staticClass: "row"
-  }, [_c('div', {
-    staticClass: "alert alert-danger col-md-8 col-md-offset-2",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error)
-    }
-  })]) : _vm._e(), _vm._v(" "), _c('div', {
-    staticClass: "row"
-  }, [(!_vm.inProgress) ? _c('div', {
-    staticClass: "col-md-8 col-md-offset-2"
-  }, [(_vm.cats.length > 0) ? [_c('transition-group', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, _vm._l((_vm.cats), function(cat) {
-    return _c('cat-item', {
-      key: cat.id,
-      attrs: {
-        "cat": cat
-      }
-    })
-  })), _vm._v(" "), (_vm.response != null) ? _c('pagination', {
-    attrs: {
-      "data": _vm.response
-    }
-  }) : _vm._e()] : [_vm._m(0)]], 2) : _vm._e()])])
-},staticRenderFns: [function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_vm._v("\n                        Bisher wurden noch keine Katzen ins System aufgenommen.\n                    ")])])
-}]}
-module.exports.render._withStripped = true
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c("div", [
+    _c("div", { staticClass: "row" }, [
+      _c(
+        "div",
+        { staticClass: "col-md-8 col-md-offset-2 toolbox" },
+        [
+          _c(
+            "router-link",
+            {
+              staticClass: "btn btn-success pull-right",
+              attrs: { to: "/cats/create" }
+            },
+            [_vm._v("Katze aufnehmen")]
+          ),
+          _vm._v(" "),
+          _vm.response != null
+            ? _c("pagination", { attrs: { data: _vm.response } })
+            : _vm._e()
+        ],
+        1
+      )
+    ]),
+    _vm._v(" "),
+    _vm.error.length
+      ? _c("div", { staticClass: "row" }, [
+          _c("div", {
+            staticClass: "alert alert-danger col-md-8 col-md-offset-2",
+            attrs: { role: "alert" },
+            domProps: { textContent: _vm._s(_vm.error) }
+          })
+        ])
+      : _vm._e(),
+    _vm._v(" "),
+    _c("div", { staticClass: "row" }, [
+      !_vm.inProgress
+        ? _c(
+            "div",
+            { staticClass: "col-md-8 col-md-offset-2" },
+            [
+              _vm.cats.length > 0
+                ? [
+                    _c(
+                      "transition-group",
+                      { attrs: { name: "component-fade", mode: "out-in" } },
+                      _vm._l(_vm.cats, function(cat) {
+                        return _c("cat-item", {
+                          key: cat.id,
+                          attrs: { cat: cat }
+                        })
+                      })
+                    ),
+                    _vm._v(" "),
+                    _vm.response != null
+                      ? _c("pagination", { attrs: { data: _vm.response } })
+                      : _vm._e()
+                  ]
+                : [_vm._m(0, false, false)]
+            ],
+            2
+          )
+        : _vm._e()
+    ])
+  ])
+}
+var staticRenderFns = [
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel panel-default" }, [
+      _c("div", { staticClass: "panel-body" }, [
+        _vm._v(
+          "\n                        Bisher wurden noch keine Katzen ins System aufgenommen.\n                    "
+        )
+      ])
+    ])
+  }
+]
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-564b89c9", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-4676f9d3", module.exports)
   }
 }
 
 /***/ }),
-/* 503 */
+/* 508 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
 function injectStyle (ssrContext) {
   if (disposed) return
-  __webpack_require__(504)
+  __webpack_require__(509)
 }
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(506),
-  /* template */
-  __webpack_require__(507),
-  /* styles */
-  injectStyle,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(511)
+/* template */
+var __vue_template__ = __webpack_require__(512)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = injectStyle
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/CatCreate.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] CatCreate.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/CatCreate.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -60601,10 +61559,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-ca4c0bd6", Component.options)
+    hotAPI.createRecord("data-v-9fc6e96a", Component.options)
   } else {
-    hotAPI.reload("data-v-ca4c0bd6", Component.options)
-  }
+    hotAPI.reload("data-v-9fc6e96a", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -60614,23 +61572,23 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 504 */
+/* 509 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(505);
+var content = __webpack_require__(510);
 if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
-var update = __webpack_require__(53)("a3f62f1a", content, false);
+var update = __webpack_require__(54)("21742d8e", content, false);
 // Hot Module Replacement
 if(false) {
  // When the styles change, update the <style> tags
  if(!content.locals) {
-   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-ca4c0bd6\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./CatCreate.vue", function() {
-     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-ca4c0bd6\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./CatCreate.vue");
+   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-9fc6e96a\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./CatCreate.vue", function() {
+     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-9fc6e96a\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./CatCreate.vue");
      if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
      update(newContent);
    });
@@ -60640,10 +61598,10 @@ if(false) {
 }
 
 /***/ }),
-/* 505 */
+/* 510 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(52)(undefined);
+exports = module.exports = __webpack_require__(53)(undefined);
 // imports
 
 
@@ -60654,7 +61612,7 @@ exports.push([module.i, "\n#cat-photo {\n    max-width: 15em;\n    max-height: 1
 
 
 /***/ }),
-/* 506 */
+/* 511 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -60959,7 +61917,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony default export */ __webpack_exports__["default"] = ({
     data: function data() {
         return {
-            error: {},
+            error: { errors: {}, message: undefined },
             inProgress: false,
 
             // default image when nothing was uploaded
@@ -61032,7 +61990,8 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             }).catch(function (error) {
                 _this.error = error.response.data;
 
-                var firstError = Object.keys(_this.error)[0];
+                var firstError = Object.keys(_this.error.errors)[0];
+                console.log("FirstError:", firstError);
                 $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
 
                 vm.unlockForm();
@@ -61065,1418 +62024,2036 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 507 */
+/* 512 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "row"
-  }, [_c('div', {
-    staticClass: "col-md-8 col-md-offset-2"
-  }, [_c('form', {
-    on: {
-      "submit": function($event) {
-        $event.preventDefault();
-        _vm.store($event)
-      }
-    }
-  }, [_c('div', {
-    staticClass: "panel-group",
-    attrs: {
-      "id": "accordion",
-      "role": "tablist"
-    }
-  }, [_c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(0), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse in",
-    attrs: {
-      "id": "collapseOne",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group"
-  }, [_c('div', {
-    staticClass: "pull-right"
-  }, [_c('img', {
-    staticClass: "img-responsive",
-    attrs: {
-      "id": "cat-photo",
-      "src": _vm.form.image
-    }
-  })]), _vm._v(" "), _c('label', {
-    attrs: {
-      "for": "photo"
-    }
-  }, [_vm._v("Foto der Katze")]), _vm._v(" "), _c('input', {
-    attrs: {
-      "type": "file",
-      "id": "photo"
-    },
-    on: {
-      "change": _vm.onFileChange
-    }
-  }), _vm._v(" "), (_vm.error.photo) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.photo)
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "name"
-    }
-  }, [_vm._v("Name")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.name),
-      expression: "form.name"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "name",
-      "placeholder": "Name",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.name)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.name = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "breed"
-    }
-  }, [_vm._v("Rasse")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.breed),
-      expression: "form.breed"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "breed",
-      "placeholder": "Rasse",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.breed)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.breed = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.color
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "color"
-    }
-  }, [_vm._v("Farbe*")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.color),
-      expression: "form.color"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "color",
-      "placeholder": "Farbe",
-      "disabled": _vm.inProgress,
-      "required": ""
-    },
-    domProps: {
-      "value": (_vm.form.color)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.color = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.color) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.color[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.date_of_birth
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "date_of_birth"
-    }
-  }, [_vm._v("Geburtstdatum")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.date_of_birth),
-      expression: "form.date_of_birth"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "date_of_birth",
-      "placeholder": "Geburtstdatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.date_of_birth)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.date_of_birth = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.date_of_birth) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.date_of_birth[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "radio",
-    class: {
-      'has-error': _vm.error.is_male
-    }
-  }, [_c('label', {
-    staticClass: "radio-inline"
-  }, [_c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_male),
-      expression: "form.is_male"
-    }],
-    attrs: {
-      "type": "radio",
-      "name": "is_male",
-      "value": "1",
-      "checked": ""
-    },
-    domProps: {
-      "checked": _vm._q(_vm.form.is_male, "1")
-    },
-    on: {
-      "__c": function($event) {
-        _vm.form.is_male = "1"
-      }
-    }
-  }), _vm._v("\n                            männlich\n                        ")]), _vm._v(" "), _c('label', {
-    staticClass: "radio-inline"
-  }, [_c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_male),
-      expression: "form.is_male"
-    }],
-    attrs: {
-      "type": "radio",
-      "name": "is_male",
-      "value": "0",
-      "checked": ""
-    },
-    domProps: {
-      "checked": _vm._q(_vm.form.is_male, "0")
-    },
-    on: {
-      "__c": function($event) {
-        _vm.form.is_male = "0"
-      }
-    }
-  }), _vm._v("\n                            weiblich\n                        ")]), _c('br'), _vm._v(" "), (_vm.error.is_male) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.is_male[0])
-    }
-  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(1), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseTwo",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.registration_date
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "entry_date"
-    }
-  }, [_vm._v("Aufnahmedatum")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.registration_date),
-      expression: "form.registration_date"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "entry_date",
-      "placeholder": "Aufnahmedatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.registration_date)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.registration_date = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.registration_date) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.registration_date[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.leave_date
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "leave_date"
-    }
-  }, [_vm._v("Abgabedatum")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.leave_date),
-      expression: "form.leave_date"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "leave_date",
-      "placeholder": "Abgabedatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.leave_date)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.leave_date = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.leave_date) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.leave_date[0])
-    }
-  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(2), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseThree",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "location"
-    }
-  }, [_vm._v("Ortsname")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.location),
-      expression: "form.location"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "location",
-      "placeholder": "Ort, z. B. Fam. Müller",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.location)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.location = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "street"
-    }
-  }, [_vm._v("Straße und Hausnummer")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.street),
-      expression: "form.street"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "street",
-      "placeholder": "z. B. Musterstr. 42",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.street)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.street = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "city"
-    }
-  }, [_vm._v("PLZ und Ort")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.city),
-      expression: "form.city"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "city",
-      "placeholder": "z. B. 49074 Osnabrück",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.city)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.city = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "country"
-    }
-  }, [_vm._v("Land")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.country),
-      expression: "form.country"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "country",
-      "placeholder": "z. B. Deutschland",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.country)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.country = $event.target.value
-      }
-    }
-  })])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(3), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseFour",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.is_castrated
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "is_castrated"
-    }
-  }, [_vm._v("Ist die Katze kastriert?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_castrated),
-      expression: "form.is_castrated"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "is_castrated"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_castrated) ? _vm._i(_vm.form.is_castrated, null) > -1 : (_vm.form.is_castrated)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_castrated,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_castrated = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_castrated = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c("div", { staticClass: "row" }, [
+    _c("div", { staticClass: "col-md-8 col-md-offset-2" }, [
+      _c(
+        "form",
+        {
+          on: {
+            submit: function($event) {
+              $event.preventDefault()
+              _vm.store($event)
+            }
           }
-        } else {
-          _vm.form.is_castrated = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_castrated) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.is_castrated[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('transition', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, [(_vm.form.is_castrated) ? _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.castration_date
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "castration_date"
-    }
-  }, [_vm._v("Kastrationsdatum")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.castration_date),
-      expression: "form.castration_date"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "castration_date",
-      "placeholder": "Kastrationsdatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.castration_date)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.castration_date = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.castration_date) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.castration_date[0])
-    }
-  }) : _vm._e()]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(4), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseFive",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.first_vaccination
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "first_vaccination"
-    }
-  }, [_vm._v("Erste Impfung")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.first_vaccination),
-      expression: "form.first_vaccination"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "first_vaccination",
-      "placeholder": "Erste Impfung",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.first_vaccination)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.first_vaccination = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.first_vaccination) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.first_vaccination[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.second_vaccination
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "second_vaccination"
-    }
-  }, [_vm._v("Zweite Impfung")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.second_vaccination),
-      expression: "form.second_vaccination"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "second_vaccination",
-      "placeholder": "Zweite Impfung",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.second_vaccination)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.second_vaccination = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.second_vaccination) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.second_vaccination[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.next_vaccination
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "first_vaccination"
-    }
-  }, [_vm._v("Nächste Impfung")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.next_vaccination),
-      expression: "form.next_vaccination"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "next_vaccination",
-      "placeholder": "Nächste Impfung",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.next_vaccination)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.next_vaccination = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.next_vaccination) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.next_vaccination[0])
-    }
-  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(5), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseSix",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.tattoo_left
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "tattoo_left"
-    }
-  }, [_vm._v("Tätowierung links")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.tattoo_left),
-      expression: "form.tattoo_left"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "tattoo_left",
-      "placeholder": "Tätowierung links",
-      "maxlength": "5",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.tattoo_left)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.tattoo_left = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.tattoo_left) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.tattoo_left[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.tattoo_right
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "tattoo_right"
-    }
-  }, [_vm._v("Tätowierung rechts")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.tattoo_right),
-      expression: "form.tattoo_right"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "tattoo_right",
-      "placeholder": "Tätowierung links",
-      "maxlength": "5",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.tattoo_right)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.tattoo_right = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.tattoo_right) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.tattoo_right[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.chip
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "chip"
-    }
-  }, [_vm._v("Chip")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.chip),
-      expression: "form.chip"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "chip",
-      "placeholder": "Chipnummer",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.chip)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.chip = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (_vm.error.chip) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.chip[0])
-    }
-  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(6), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseSeven",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "distinguishing_marks"
-    }
-  }, [_vm._v("Merkmale")]), _vm._v(" "), _c('textarea', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.distinguishing_marks),
-      expression: "form.distinguishing_marks"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "rows": "3",
-      "disabled": _vm.inProgress,
-      "placeholder": "Merkmale, z. B. Knick im Schwanz"
-    },
-    domProps: {
-      "value": (_vm.form.distinguishing_marks)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.distinguishing_marks = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "comments"
-    }
-  }, [_vm._v("Kommentare")]), _vm._v(" "), _c('textarea', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.comments),
-      expression: "form.comments"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "rows": "3",
-      "disabled": _vm.inProgress,
-      "placeholder": "Kommentare, z. B. Übergabe an Gabi"
-    },
-    domProps: {
-      "value": (_vm.form.comments)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.comments = $event.target.value
-      }
-    }
-  })])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(7), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseEight",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.deceased
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "deceased"
-    }
-  }, [_vm._v("Ist die Katze verstorben?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.deceased),
-      expression: "form.deceased"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "deceased"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.deceased) ? _vm._i(_vm.form.deceased, null) > -1 : (_vm.form.deceased)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.deceased,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.deceased = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.deceased = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+        },
+        [
+          _c(
+            "div",
+            {
+              staticClass: "panel-group",
+              attrs: { id: "accordion", role: "tablist" }
+            },
+            [
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(0, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse in",
+                    attrs: { id: "collapseOne", role: "tabpanel" }
+                  },
+                  [
+                    _c("div", { staticClass: "panel-body" }, [
+                      _c("div", { staticClass: "form-group" }, [
+                        _c("div", { staticClass: "pull-right" }, [
+                          _c("img", {
+                            staticClass: "img-responsive",
+                            attrs: { id: "cat-photo", src: _vm.form.image }
+                          })
+                        ]),
+                        _vm._v(" "),
+                        _c("label", { attrs: { for: "photo" } }, [
+                          _vm._v("Foto der Katze")
+                        ]),
+                        _vm._v(" "),
+                        _c("input", {
+                          attrs: { type: "file", id: "photo" },
+                          on: { change: _vm.onFileChange }
+                        }),
+                        _vm._v(" "),
+                        _vm.error.photo
+                          ? _c("p", {
+                              staticClass: "text-danger",
+                              attrs: { role: "alert" },
+                              domProps: { textContent: _vm._s(_vm.error.photo) }
+                            })
+                          : _vm._e()
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "form-group" }, [
+                        _c("label", { attrs: { for: "name" } }, [
+                          _vm._v("Name")
+                        ]),
+                        _vm._v(" "),
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.form.name,
+                              expression: "form.name"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            name: "name",
+                            id: "name",
+                            placeholder: "Name",
+                            disabled: _vm.inProgress
+                          },
+                          domProps: { value: _vm.form.name },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.$set(_vm.form, "name", $event.target.value)
+                            }
+                          }
+                        })
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "form-group" }, [
+                        _c("label", { attrs: { for: "breed" } }, [
+                          _vm._v("Rasse")
+                        ]),
+                        _vm._v(" "),
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.form.breed,
+                              expression: "form.breed"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            name: "breed",
+                            id: "breed",
+                            placeholder: "Rasse",
+                            disabled: _vm.inProgress
+                          },
+                          domProps: { value: _vm.form.breed },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.$set(_vm.form, "breed", $event.target.value)
+                            }
+                          }
+                        })
+                      ]),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: { "has-error": "color" in _vm.error.errors }
+                        },
+                        [
+                          _c("label", { attrs: { for: "color" } }, [
+                            _vm._v("Farbe*")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.color,
+                                expression: "form.color"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "text",
+                              name: "color",
+                              id: "color",
+                              placeholder: "Farbe",
+                              disabled: _vm.inProgress,
+                              required: ""
+                            },
+                            domProps: { value: _vm.form.color },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(_vm.form, "color", $event.target.value)
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "color" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(_vm.error.errors.color[0])
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "date_of_birth" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "date_of_birth" } }, [
+                            _vm._v("Geburtstdatum")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.date_of_birth,
+                                expression: "form.date_of_birth"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "date",
+                              name: "date_of_birth",
+                              id: "date_of_birth",
+                              placeholder: "Geburtstdatum",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.date_of_birth },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(
+                                  _vm.form,
+                                  "date_of_birth",
+                                  $event.target.value
+                                )
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "date_of_birth" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.date_of_birth[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "radio",
+                          class: { "has-error": "is_male" in _vm.error.errors }
+                        },
+                        [
+                          _c("label", { staticClass: "radio-inline" }, [
+                            _c("input", {
+                              directives: [
+                                {
+                                  name: "model",
+                                  rawName: "v-model",
+                                  value: _vm.form.is_male,
+                                  expression: "form.is_male"
+                                }
+                              ],
+                              attrs: {
+                                type: "radio",
+                                name: "is_male",
+                                value: "1",
+                                checked: ""
+                              },
+                              domProps: {
+                                checked: _vm._q(_vm.form.is_male, "1")
+                              },
+                              on: {
+                                change: function($event) {
+                                  _vm.$set(_vm.form, "is_male", "1")
+                                }
+                              }
+                            }),
+                            _vm._v(
+                              "\n                                    männlich\n                                "
+                            )
+                          ]),
+                          _vm._v(" "),
+                          _c("label", { staticClass: "radio-inline" }, [
+                            _c("input", {
+                              directives: [
+                                {
+                                  name: "model",
+                                  rawName: "v-model",
+                                  value: _vm.form.is_male,
+                                  expression: "form.is_male"
+                                }
+                              ],
+                              attrs: {
+                                type: "radio",
+                                name: "is_male",
+                                value: "0",
+                                checked: ""
+                              },
+                              domProps: {
+                                checked: _vm._q(_vm.form.is_male, "0")
+                              },
+                              on: {
+                                change: function($event) {
+                                  _vm.$set(_vm.form, "is_male", "0")
+                                }
+                              }
+                            }),
+                            _vm._v(
+                              "\n                                    weiblich\n                                "
+                            )
+                          ]),
+                          _c("br"),
+                          _vm._v(" "),
+                          "is_male" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.is_male[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      )
+                    ])
+                  ]
+                )
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(1, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse",
+                    attrs: { id: "collapseTwo", role: "tabpanel" }
+                  },
+                  [
+                    _c("div", { staticClass: "panel-body" }, [
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "registration_date" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "entry_date" } }, [
+                            _vm._v("Aufnahmedatum")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.registration_date,
+                                expression: "form.registration_date"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "date",
+                              name: "entry_date",
+                              id: "entry_date",
+                              placeholder: "Aufnahmedatum",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.registration_date },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(
+                                  _vm.form,
+                                  "registration_date",
+                                  $event.target.value
+                                )
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "registration_date" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.registration_date[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "leave_date" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "leave_date" } }, [
+                            _vm._v("Abgabedatum")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.leave_date,
+                                expression: "form.leave_date"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "date",
+                              name: "leave_date",
+                              id: "leave_date",
+                              placeholder: "Abgabedatum",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.leave_date },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(
+                                  _vm.form,
+                                  "leave_date",
+                                  $event.target.value
+                                )
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "leave_date" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.leave_date[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      )
+                    ])
+                  ]
+                )
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(2, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse",
+                    attrs: { id: "collapseThree", role: "tabpanel" }
+                  },
+                  [
+                    _c("div", { staticClass: "panel-body" }, [
+                      _c("div", { staticClass: "form-group" }, [
+                        _c("label", { attrs: { for: "location" } }, [
+                          _vm._v("Ortsname")
+                        ]),
+                        _vm._v(" "),
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.form.location,
+                              expression: "form.location"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            name: "location",
+                            id: "location",
+                            placeholder: "Ort, z. B. Fam. Müller",
+                            disabled: _vm.inProgress
+                          },
+                          domProps: { value: _vm.form.location },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.$set(
+                                _vm.form,
+                                "location",
+                                $event.target.value
+                              )
+                            }
+                          }
+                        })
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "form-group" }, [
+                        _c("label", { attrs: { for: "street" } }, [
+                          _vm._v("Straße und Hausnummer")
+                        ]),
+                        _vm._v(" "),
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.form.street,
+                              expression: "form.street"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            name: "street",
+                            id: "street",
+                            placeholder: "z. B. Musterstr. 42",
+                            disabled: _vm.inProgress
+                          },
+                          domProps: { value: _vm.form.street },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.$set(_vm.form, "street", $event.target.value)
+                            }
+                          }
+                        })
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "form-group" }, [
+                        _c("label", { attrs: { for: "city" } }, [
+                          _vm._v("PLZ und Ort")
+                        ]),
+                        _vm._v(" "),
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.form.city,
+                              expression: "form.city"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            name: "city",
+                            id: "city",
+                            placeholder: "z. B. 49074 Osnabrück",
+                            disabled: _vm.inProgress
+                          },
+                          domProps: { value: _vm.form.city },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.$set(_vm.form, "city", $event.target.value)
+                            }
+                          }
+                        })
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "form-group" }, [
+                        _c("label", { attrs: { for: "country" } }, [
+                          _vm._v("Land")
+                        ]),
+                        _vm._v(" "),
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.form.country,
+                              expression: "form.country"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            name: "country",
+                            id: "country",
+                            placeholder: "z. B. Deutschland",
+                            disabled: _vm.inProgress
+                          },
+                          domProps: { value: _vm.form.country },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.$set(_vm.form, "country", $event.target.value)
+                            }
+                          }
+                        })
+                      ])
+                    ])
+                  ]
+                )
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(3, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse",
+                    attrs: { id: "collapseFour", role: "tabpanel" }
+                  },
+                  [
+                    _c(
+                      "div",
+                      { staticClass: "panel-body" },
+                      [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "form-group",
+                            class: {
+                              "has-error": "is_castrated" in _vm.error.errors
+                            }
+                          },
+                          [
+                            _c("label", { attrs: { for: "is_castrated" } }, [
+                              _vm._v("Ist die Katze kastriert?")
+                            ]),
+                            _vm._v(" "),
+                            _c("input", {
+                              directives: [
+                                {
+                                  name: "model",
+                                  rawName: "v-model",
+                                  value: _vm.form.is_castrated,
+                                  expression: "form.is_castrated"
+                                }
+                              ],
+                              attrs: {
+                                type: "checkbox",
+                                name: "is_castrated",
+                                id: "is_castrated"
+                              },
+                              domProps: {
+                                checked: Array.isArray(_vm.form.is_castrated)
+                                  ? _vm._i(_vm.form.is_castrated, null) > -1
+                                  : _vm.form.is_castrated
+                              },
+                              on: {
+                                change: function($event) {
+                                  var $$a = _vm.form.is_castrated,
+                                    $$el = $event.target,
+                                    $$c = $$el.checked ? true : false
+                                  if (Array.isArray($$a)) {
+                                    var $$v = null,
+                                      $$i = _vm._i($$a, $$v)
+                                    if ($$el.checked) {
+                                      $$i < 0 &&
+                                        (_vm.form.is_castrated = $$a.concat([
+                                          $$v
+                                        ]))
+                                    } else {
+                                      $$i > -1 &&
+                                        (_vm.form.is_castrated = $$a
+                                          .slice(0, $$i)
+                                          .concat($$a.slice($$i + 1)))
+                                    }
+                                  } else {
+                                    _vm.$set(_vm.form, "is_castrated", $$c)
+                                  }
+                                }
+                              }
+                            }),
+                            _c("br"),
+                            _vm._v(" "),
+                            "is_castrated" in _vm.error.errors
+                              ? _c("p", {
+                                  staticClass: "text-danger",
+                                  attrs: { role: "alert" },
+                                  domProps: {
+                                    textContent: _vm._s(
+                                      _vm.error.errors.is_castrated[0]
+                                    )
+                                  }
+                                })
+                              : _vm._e()
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "transition",
+                          { attrs: { name: "component-fade", mode: "out-in" } },
+                          [
+                            _vm.form.is_castrated
+                              ? _c(
+                                  "div",
+                                  {
+                                    staticClass: "form-group",
+                                    class: {
+                                      "has-error":
+                                        "castration_date" in _vm.error.errors
+                                    }
+                                  },
+                                  [
+                                    _c(
+                                      "label",
+                                      { attrs: { for: "castration_date" } },
+                                      [_vm._v("Kastrationsdatum")]
+                                    ),
+                                    _vm._v(" "),
+                                    _c("input", {
+                                      directives: [
+                                        {
+                                          name: "model",
+                                          rawName: "v-model",
+                                          value: _vm.form.castration_date,
+                                          expression: "form.castration_date"
+                                        }
+                                      ],
+                                      staticClass: "form-control",
+                                      attrs: {
+                                        type: "date",
+                                        name: "castration_date",
+                                        id: "castration_date",
+                                        placeholder: "Kastrationsdatum",
+                                        disabled: _vm.inProgress
+                                      },
+                                      domProps: {
+                                        value: _vm.form.castration_date
+                                      },
+                                      on: {
+                                        input: function($event) {
+                                          if ($event.target.composing) {
+                                            return
+                                          }
+                                          _vm.$set(
+                                            _vm.form,
+                                            "castration_date",
+                                            $event.target.value
+                                          )
+                                        }
+                                      }
+                                    }),
+                                    _vm._v(" "),
+                                    "castration_date" in _vm.error.errors
+                                      ? _c("p", {
+                                          staticClass: "text-danger",
+                                          attrs: { role: "alert" },
+                                          domProps: {
+                                            textContent: _vm._s(
+                                              _vm.error.errors
+                                                .castration_date[0]
+                                            )
+                                          }
+                                        })
+                                      : _vm._e()
+                                  ]
+                                )
+                              : _vm._e()
+                          ]
+                        )
+                      ],
+                      1
+                    )
+                  ]
+                )
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(4, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse",
+                    attrs: { id: "collapseFive", role: "tabpanel" }
+                  },
+                  [
+                    _c("div", { staticClass: "panel-body" }, [
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "first_vaccination" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "first_vaccination" } }, [
+                            _vm._v("Erste Impfung")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.first_vaccination,
+                                expression: "form.first_vaccination"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "date",
+                              name: "first_vaccination",
+                              id: "first_vaccination",
+                              placeholder: "Erste Impfung",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.first_vaccination },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(
+                                  _vm.form,
+                                  "first_vaccination",
+                                  $event.target.value
+                                )
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "first_vaccination" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.first_vaccination[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error":
+                              "second_vaccination" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c(
+                            "label",
+                            { attrs: { for: "second_vaccination" } },
+                            [_vm._v("Zweite Impfung")]
+                          ),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.second_vaccination,
+                                expression: "form.second_vaccination"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "date",
+                              name: "second_vaccination",
+                              id: "second_vaccination",
+                              placeholder: "Zweite Impfung",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.second_vaccination },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(
+                                  _vm.form,
+                                  "second_vaccination",
+                                  $event.target.value
+                                )
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "second_vaccination" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.second_vaccination[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "next_vaccination" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "first_vaccination" } }, [
+                            _vm._v("Nächste Impfung")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.next_vaccination,
+                                expression: "form.next_vaccination"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "date",
+                              name: "next_vaccination",
+                              placeholder: "Nächste Impfung",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.next_vaccination },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(
+                                  _vm.form,
+                                  "next_vaccination",
+                                  $event.target.value
+                                )
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "next_vaccination" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.next_vaccination[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      )
+                    ])
+                  ]
+                )
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(5, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse",
+                    attrs: { id: "collapseSix", role: "tabpanel" }
+                  },
+                  [
+                    _c("div", { staticClass: "panel-body" }, [
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "tattoo_left" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "tattoo_left" } }, [
+                            _vm._v("Tätowierung links")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.tattoo_left,
+                                expression: "form.tattoo_left"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "text",
+                              name: "tattoo_left",
+                              id: "tattoo_left",
+                              placeholder: "Tätowierung links",
+                              maxlength: "5",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.tattoo_left },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(
+                                  _vm.form,
+                                  "tattoo_left",
+                                  $event.target.value
+                                )
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "tattoo_left" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.tattoo_left[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "tattoo_right" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "tattoo_right" } }, [
+                            _vm._v("Tätowierung rechts")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.tattoo_right,
+                                expression: "form.tattoo_right"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "text",
+                              name: "tattoo_right",
+                              id: "tattoo_right",
+                              placeholder: "Tätowierung links",
+                              maxlength: "5",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.tattoo_right },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(
+                                  _vm.form,
+                                  "tattoo_right",
+                                  $event.target.value
+                                )
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "tattoo_right" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.tattoo_right[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: { "has-error": "chip" in _vm.error.errors }
+                        },
+                        [
+                          _c("label", { attrs: { for: "chip" } }, [
+                            _vm._v("Chip")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.chip,
+                                expression: "form.chip"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "text",
+                              name: "chip",
+                              id: "chip",
+                              placeholder: "Chipnummer",
+                              disabled: _vm.inProgress
+                            },
+                            domProps: { value: _vm.form.chip },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.$set(_vm.form, "chip", $event.target.value)
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          "chip" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(_vm.error.errors.chip[0])
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      )
+                    ])
+                  ]
+                )
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(6, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse",
+                    attrs: { id: "collapseSeven", role: "tabpanel" }
+                  },
+                  [
+                    _c("div", { staticClass: "panel-body" }, [
+                      _c("div", { staticClass: "form-group" }, [
+                        _c(
+                          "label",
+                          { attrs: { for: "distinguishing_marks" } },
+                          [_vm._v("Merkmale")]
+                        ),
+                        _vm._v(" "),
+                        _c("textarea", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.form.distinguishing_marks,
+                              expression: "form.distinguishing_marks"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            id: "distinguishing_marks",
+                            rows: "3",
+                            disabled: _vm.inProgress,
+                            placeholder: "Merkmale, z. B. Knick im Schwanz"
+                          },
+                          domProps: { value: _vm.form.distinguishing_marks },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.$set(
+                                _vm.form,
+                                "distinguishing_marks",
+                                $event.target.value
+                              )
+                            }
+                          }
+                        })
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "form-group" }, [
+                        _c("label", { attrs: { for: "comments" } }, [
+                          _vm._v("Kommentare")
+                        ]),
+                        _vm._v(" "),
+                        _c("textarea", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.form.comments,
+                              expression: "form.comments"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            id: "comments",
+                            rows: "3",
+                            disabled: _vm.inProgress,
+                            placeholder: "Kommentare, z. B. Übergabe an Gabi"
+                          },
+                          domProps: { value: _vm.form.comments },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.$set(
+                                _vm.form,
+                                "comments",
+                                $event.target.value
+                              )
+                            }
+                          }
+                        })
+                      ])
+                    ])
+                  ]
+                )
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(7, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse",
+                    attrs: { id: "collapseEight", role: "tabpanel" }
+                  },
+                  [
+                    _c(
+                      "div",
+                      { staticClass: "panel-body" },
+                      [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "form-group",
+                            class: {
+                              "has-error": "deceased" in _vm.error.errors
+                            }
+                          },
+                          [
+                            _c("label", { attrs: { for: "deceased" } }, [
+                              _vm._v("Ist die Katze verstorben?")
+                            ]),
+                            _vm._v(" "),
+                            _c("input", {
+                              directives: [
+                                {
+                                  name: "model",
+                                  rawName: "v-model",
+                                  value: _vm.form.deceased,
+                                  expression: "form.deceased"
+                                }
+                              ],
+                              attrs: {
+                                type: "checkbox",
+                                name: "deceased",
+                                id: "deceased"
+                              },
+                              domProps: {
+                                checked: Array.isArray(_vm.form.deceased)
+                                  ? _vm._i(_vm.form.deceased, null) > -1
+                                  : _vm.form.deceased
+                              },
+                              on: {
+                                change: function($event) {
+                                  var $$a = _vm.form.deceased,
+                                    $$el = $event.target,
+                                    $$c = $$el.checked ? true : false
+                                  if (Array.isArray($$a)) {
+                                    var $$v = null,
+                                      $$i = _vm._i($$a, $$v)
+                                    if ($$el.checked) {
+                                      $$i < 0 &&
+                                        (_vm.form.deceased = $$a.concat([$$v]))
+                                    } else {
+                                      $$i > -1 &&
+                                        (_vm.form.deceased = $$a
+                                          .slice(0, $$i)
+                                          .concat($$a.slice($$i + 1)))
+                                    }
+                                  } else {
+                                    _vm.$set(_vm.form, "deceased", $$c)
+                                  }
+                                }
+                              }
+                            }),
+                            _c("br"),
+                            _vm._v(" "),
+                            "deceased" in _vm.error.errors
+                              ? _c("p", {
+                                  staticClass: "text-danger",
+                                  attrs: { role: "alert" },
+                                  domProps: {
+                                    textContent: _vm._s(
+                                      _vm.error.errors.deceased[0]
+                                    )
+                                  }
+                                })
+                              : _vm._e()
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "transition",
+                          { attrs: { name: "component-fade", mode: "out-in" } },
+                          [
+                            _vm.form.deceased
+                              ? _c("div", { staticClass: "form-group" }, [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "castration_date" } },
+                                    [_vm._v("Todesursache")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.cause_of_death,
+                                        expression: "form.cause_of_death"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "date",
+                                      name: "cause_of_death",
+                                      placeholder: "Kastrationsdatum",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: {
+                                      value: _vm.form.cause_of_death
+                                    },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "cause_of_death",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  })
+                                ])
+                              : _vm._e()
+                          ]
+                        )
+                      ],
+                      1
+                    )
+                  ]
+                )
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm._m(8, false, false),
+                _vm._v(" "),
+                _c(
+                  "div",
+                  {
+                    staticClass: "panel-collapse collapse",
+                    attrs: { id: "collapseNine", role: "tabpanel" }
+                  },
+                  [
+                    _c("div", { staticClass: "panel-body" }, [
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "is_outdoor_cat" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "outdoor" } }, [
+                            _vm._v("Außenkatze?")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.is_outdoor_cat,
+                                expression: "form.is_outdoor_cat"
+                              }
+                            ],
+                            attrs: {
+                              type: "checkbox",
+                              name: "outdoor",
+                              id: "outdoor"
+                            },
+                            domProps: {
+                              checked: Array.isArray(_vm.form.is_outdoor_cat)
+                                ? _vm._i(_vm.form.is_outdoor_cat, null) > -1
+                                : _vm.form.is_outdoor_cat
+                            },
+                            on: {
+                              change: function($event) {
+                                var $$a = _vm.form.is_outdoor_cat,
+                                  $$el = $event.target,
+                                  $$c = $$el.checked ? true : false
+                                if (Array.isArray($$a)) {
+                                  var $$v = null,
+                                    $$i = _vm._i($$a, $$v)
+                                  if ($$el.checked) {
+                                    $$i < 0 &&
+                                      (_vm.form.is_outdoor_cat = $$a.concat([
+                                        $$v
+                                      ]))
+                                  } else {
+                                    $$i > -1 &&
+                                      (_vm.form.is_outdoor_cat = $$a
+                                        .slice(0, $$i)
+                                        .concat($$a.slice($$i + 1)))
+                                  }
+                                } else {
+                                  _vm.$set(_vm.form, "is_outdoor_cat", $$c)
+                                }
+                              }
+                            }
+                          }),
+                          _c("br"),
+                          _vm._v(" "),
+                          "is_outdoor_cat" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.is_outdoor_cat[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "is_indoor_cat" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "indoor" } }, [
+                            _vm._v("Innenkatze?")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.is_indoor_cat,
+                                expression: "form.is_indoor_cat"
+                              }
+                            ],
+                            attrs: {
+                              type: "checkbox",
+                              name: "indoor",
+                              id: "indoor"
+                            },
+                            domProps: {
+                              checked: Array.isArray(_vm.form.is_indoor_cat)
+                                ? _vm._i(_vm.form.is_indoor_cat, null) > -1
+                                : _vm.form.is_indoor_cat
+                            },
+                            on: {
+                              change: function($event) {
+                                var $$a = _vm.form.is_indoor_cat,
+                                  $$el = $event.target,
+                                  $$c = $$el.checked ? true : false
+                                if (Array.isArray($$a)) {
+                                  var $$v = null,
+                                    $$i = _vm._i($$a, $$v)
+                                  if ($$el.checked) {
+                                    $$i < 0 &&
+                                      (_vm.form.is_indoor_cat = $$a.concat([
+                                        $$v
+                                      ]))
+                                  } else {
+                                    $$i > -1 &&
+                                      (_vm.form.is_indoor_cat = $$a
+                                        .slice(0, $$i)
+                                        .concat($$a.slice($$i + 1)))
+                                  }
+                                } else {
+                                  _vm.$set(_vm.form, "is_indoor_cat", $$c)
+                                }
+                              }
+                            }
+                          }),
+                          _c("br"),
+                          _vm._v(" "),
+                          "is_indoor_cat" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.is_indoor_cat[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "is_cat_friendly" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "cat_friendly" } }, [
+                            _vm._v("Katzenfreundlich?")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.is_cat_friendly,
+                                expression: "form.is_cat_friendly"
+                              }
+                            ],
+                            attrs: {
+                              type: "checkbox",
+                              name: "cat_friendly",
+                              id: "cat_friendly"
+                            },
+                            domProps: {
+                              checked: Array.isArray(_vm.form.is_cat_friendly)
+                                ? _vm._i(_vm.form.is_cat_friendly, null) > -1
+                                : _vm.form.is_cat_friendly
+                            },
+                            on: {
+                              change: function($event) {
+                                var $$a = _vm.form.is_cat_friendly,
+                                  $$el = $event.target,
+                                  $$c = $$el.checked ? true : false
+                                if (Array.isArray($$a)) {
+                                  var $$v = null,
+                                    $$i = _vm._i($$a, $$v)
+                                  if ($$el.checked) {
+                                    $$i < 0 &&
+                                      (_vm.form.is_cat_friendly = $$a.concat([
+                                        $$v
+                                      ]))
+                                  } else {
+                                    $$i > -1 &&
+                                      (_vm.form.is_cat_friendly = $$a
+                                        .slice(0, $$i)
+                                        .concat($$a.slice($$i + 1)))
+                                  }
+                                } else {
+                                  _vm.$set(_vm.form, "is_cat_friendly", $$c)
+                                }
+                              }
+                            }
+                          }),
+                          _c("br"),
+                          _vm._v(" "),
+                          "is_cat_friendly" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.is_cat_friendly[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "is_dog_friendly" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "dog_friendly" } }, [
+                            _vm._v("Hundefreundlich?")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.is_dog_friendly,
+                                expression: "form.is_dog_friendly"
+                              }
+                            ],
+                            attrs: {
+                              type: "checkbox",
+                              name: "dog_friendly",
+                              id: "dog_friendly"
+                            },
+                            domProps: {
+                              checked: Array.isArray(_vm.form.is_dog_friendly)
+                                ? _vm._i(_vm.form.is_dog_friendly, null) > -1
+                                : _vm.form.is_dog_friendly
+                            },
+                            on: {
+                              change: function($event) {
+                                var $$a = _vm.form.is_dog_friendly,
+                                  $$el = $event.target,
+                                  $$c = $$el.checked ? true : false
+                                if (Array.isArray($$a)) {
+                                  var $$v = null,
+                                    $$i = _vm._i($$a, $$v)
+                                  if ($$el.checked) {
+                                    $$i < 0 &&
+                                      (_vm.form.is_dog_friendly = $$a.concat([
+                                        $$v
+                                      ]))
+                                  } else {
+                                    $$i > -1 &&
+                                      (_vm.form.is_dog_friendly = $$a
+                                        .slice(0, $$i)
+                                        .concat($$a.slice($$i + 1)))
+                                  }
+                                } else {
+                                  _vm.$set(_vm.form, "is_dog_friendly", $$c)
+                                }
+                              }
+                            }
+                          }),
+                          _c("br"),
+                          _vm._v(" "),
+                          "is_dog_friendly" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.is_dog_friendly[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "form-group",
+                          class: {
+                            "has-error": "is_child_friendly" in _vm.error.errors
+                          }
+                        },
+                        [
+                          _c("label", { attrs: { for: "child_friendly" } }, [
+                            _vm._v("Kinderfreundlich?")
+                          ]),
+                          _vm._v(" "),
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.form.is_child_friendly,
+                                expression: "form.is_child_friendly"
+                              }
+                            ],
+                            attrs: {
+                              type: "checkbox",
+                              name: "child_friendly",
+                              id: "child_friendly"
+                            },
+                            domProps: {
+                              checked: Array.isArray(_vm.form.is_child_friendly)
+                                ? _vm._i(_vm.form.is_child_friendly, null) > -1
+                                : _vm.form.is_child_friendly
+                            },
+                            on: {
+                              change: function($event) {
+                                var $$a = _vm.form.is_child_friendly,
+                                  $$el = $event.target,
+                                  $$c = $$el.checked ? true : false
+                                if (Array.isArray($$a)) {
+                                  var $$v = null,
+                                    $$i = _vm._i($$a, $$v)
+                                  if ($$el.checked) {
+                                    $$i < 0 &&
+                                      (_vm.form.is_child_friendly = $$a.concat([
+                                        $$v
+                                      ]))
+                                  } else {
+                                    $$i > -1 &&
+                                      (_vm.form.is_child_friendly = $$a
+                                        .slice(0, $$i)
+                                        .concat($$a.slice($$i + 1)))
+                                  }
+                                } else {
+                                  _vm.$set(_vm.form, "is_child_friendly", $$c)
+                                }
+                              }
+                            }
+                          }),
+                          _c("br"),
+                          _vm._v(" "),
+                          "is_child_friendly" in _vm.error.errors
+                            ? _c("p", {
+                                staticClass: "text-danger",
+                                attrs: { role: "alert" },
+                                domProps: {
+                                  textContent: _vm._s(
+                                    _vm.error.errors.is_child_friendly[0]
+                                  )
+                                }
+                              })
+                            : _vm._e()
+                        ]
+                      )
+                    ])
+                  ]
+                )
+              ])
+            ]
+          ),
+          _vm._v(" "),
+          _c(
+            "button",
+            {
+              staticClass: "btn btn-primary pull-right",
+              attrs: { type: "submit", disabled: _vm.inProgress }
+            },
+            [_vm._v("speichern")]
+          )
+        ]
+      )
+    ])
+  ])
+}
+var staticRenderFns = [
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseOne"
           }
-        } else {
-          _vm.form.deceased = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (_vm.error.chip) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.chip[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('transition', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, [(_vm.form.deceased) ? _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "castration_date"
-    }
-  }, [_vm._v("Todesursache")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.cause_of_death),
-      expression: "form.cause_of_death"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "cause_of_death",
-      "placeholder": "Kastrationsdatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.cause_of_death)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.cause_of_death = $event.target.value
-      }
-    }
-  })]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_vm._m(8), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseNine",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.is_outdoor_cat
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "outdoor"
-    }
-  }, [_vm._v("Außenkatze?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_outdoor_cat),
-      expression: "form.is_outdoor_cat"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "outdoor"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_outdoor_cat) ? _vm._i(_vm.form.is_outdoor_cat, null) > -1 : (_vm.form.is_outdoor_cat)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_outdoor_cat,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_outdoor_cat = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_outdoor_cat = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+        },
+        [
+          _vm._v(
+            "\n                            Basisdaten\n                        "
+          )
+        ]
+      )
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseTwo"
           }
-        } else {
-          _vm.form.is_outdoor_cat = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_outdoor_cat) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.is_outdoor_cat[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.is_indoor_cat
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "indoor"
-    }
-  }, [_vm._v("Innenkatze?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_indoor_cat),
-      expression: "form.is_indoor_cat"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "indoor"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_indoor_cat) ? _vm._i(_vm.form.is_indoor_cat, null) > -1 : (_vm.form.is_indoor_cat)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_indoor_cat,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_indoor_cat = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_indoor_cat = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+        },
+        [
+          _vm._v(
+            "\n                            Aufnahme und Abgabe\n                        "
+          )
+        ]
+      )
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseThree"
           }
-        } else {
-          _vm.form.is_indoor_cat = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_indoor_cat) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.is_indoor_cat[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.is_cat_friendly
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "cat_friendly"
-    }
-  }, [_vm._v("Katzenfreundlich?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_cat_friendly),
-      expression: "form.is_cat_friendly"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "cat_friendly"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_cat_friendly) ? _vm._i(_vm.form.is_cat_friendly, null) > -1 : (_vm.form.is_cat_friendly)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_cat_friendly,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_cat_friendly = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_cat_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+        },
+        [
+          _vm._v(
+            "\n                            Aufenthaltsort\n                        "
+          )
+        ]
+      )
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseFour"
           }
-        } else {
-          _vm.form.is_cat_friendly = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_cat_friendly) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.is_cat_friendly[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.is_dog_friendly
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "dog_friendly"
-    }
-  }, [_vm._v("Hundefreundlich?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_dog_friendly),
-      expression: "form.is_dog_friendly"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "dog_friendly"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_dog_friendly) ? _vm._i(_vm.form.is_dog_friendly, null) > -1 : (_vm.form.is_dog_friendly)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_dog_friendly,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_dog_friendly = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_dog_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+        },
+        [
+          _vm._v(
+            "\n                            Kastration\n                        "
+          )
+        ]
+      )
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseFive"
           }
-        } else {
-          _vm.form.is_dog_friendly = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_dog_friendly) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.is_dog_friendly[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': _vm.error.is_child_friendly
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "child_friendly"
-    }
-  }, [_vm._v("Kinderfreundlich?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_child_friendly),
-      expression: "form.is_child_friendly"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "child_friendly"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_child_friendly) ? _vm._i(_vm.form.is_child_friendly, null) > -1 : (_vm.form.is_child_friendly)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_child_friendly,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_child_friendly = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_child_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+        },
+        [
+          _vm._v(
+            "\n                            Impfungen\n                        "
+          )
+        ]
+      )
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseSix"
           }
-        } else {
-          _vm.form.is_child_friendly = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (_vm.error.is_child_friendly) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.is_child_friendly[0])
-    }
-  }) : _vm._e()])])])])]), _vm._v(" "), _c('button', {
-    staticClass: "btn btn-primary pull-right",
-    attrs: {
-      "type": "submit",
-      "disabled": _vm.inProgress
-    }
-  }, [_vm._v("speichern")])])])])
-},staticRenderFns: [function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseOne"
-    }
-  }, [_vm._v("\n                        Basisdaten\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseTwo"
-    }
-  }, [_vm._v("\n                        Aufnahme und Abgabe\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseThree"
-    }
-  }, [_vm._v("\n                       Aufenthaltsort\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseFour"
-    }
-  }, [_vm._v("\n                        Kastration\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseFive"
-    }
-  }, [_vm._v("\n                        Impfungen\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseSix"
-    }
-  }, [_vm._v("\n                        Tätowierung\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseSeven"
-    }
-  }, [_vm._v("\n                        Kommentare und Merkmale\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseEight"
-    }
-  }, [_vm._v("\n                        Todesfall\n                    ")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseNine"
-    }
-  }, [_vm._v("\n                        Eigenschaften\n                    ")])])
-}]}
-module.exports.render._withStripped = true
+        },
+        [
+          _vm._v(
+            "\n                            Tätowierung\n                        "
+          )
+        ]
+      )
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseSeven"
+          }
+        },
+        [
+          _vm._v(
+            "\n                            Kommentare und Merkmale\n                        "
+          )
+        ]
+      )
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseEight"
+          }
+        },
+        [
+          _vm._v(
+            "\n                            Todesfall\n                        "
+          )
+        ]
+      )
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading", attrs: { role: "tab" } }, [
+      _c(
+        "a",
+        {
+          attrs: {
+            role: "button",
+            "data-toggle": "collapse",
+            href: "#collapseNine"
+          }
+        },
+        [
+          _vm._v(
+            "\n                            Eigenschaften\n                        "
+          )
+        ]
+      )
+    ])
+  }
+]
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-ca4c0bd6", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-9fc6e96a", module.exports)
   }
 }
 
 /***/ }),
-/* 508 */
+/* 513 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
 function injectStyle (ssrContext) {
   if (disposed) return
-  __webpack_require__(509)
+  __webpack_require__(514)
 }
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(511),
-  /* template */
-  __webpack_require__(512),
-  /* styles */
-  injectStyle,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(516)
+/* template */
+var __vue_template__ = __webpack_require__(517)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = injectStyle
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/CatEdit.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] CatEdit.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/CatEdit.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -62485,10 +64062,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-3038873a", Component.options)
+    hotAPI.createRecord("data-v-1035b9ce", Component.options)
   } else {
-    hotAPI.reload("data-v-3038873a", Component.options)
-  }
+    hotAPI.reload("data-v-1035b9ce", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -62498,23 +64075,23 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 509 */
+/* 514 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(510);
+var content = __webpack_require__(515);
 if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
-var update = __webpack_require__(53)("d0f92cba", content, false);
+var update = __webpack_require__(54)("c2137674", content, false);
 // Hot Module Replacement
 if(false) {
  // When the styles change, update the <style> tags
  if(!content.locals) {
-   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-3038873a\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./CatEdit.vue", function() {
-     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-3038873a\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./CatEdit.vue");
+   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-1035b9ce\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./CatEdit.vue", function() {
+     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-1035b9ce\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./CatEdit.vue");
      if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
      update(newContent);
    });
@@ -62524,10 +64101,10 @@ if(false) {
 }
 
 /***/ }),
-/* 510 */
+/* 515 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(52)(undefined);
+exports = module.exports = __webpack_require__(53)(undefined);
 // imports
 
 
@@ -62538,7 +64115,7 @@ exports.push([module.i, "\n#cat-photo {\n    max-width: 15em;\n    max-height: 1
 
 
 /***/ }),
-/* 511 */
+/* 516 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -62949,7 +64526,6 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
                 _this2.$router.push({ path: '/cats', query: { highlight: response.data.cat_id } });
             }).catch(function (error) {
                 _this2.error = error.response.data;
-                console.log('THIS ERROR', _this2.error);
 
                 var firstError = Object.keys(_this2.error.errors)[0];
                 $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
@@ -62984,1439 +64560,2252 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 512 */
+/* 517 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "row"
-  }, [_c('transition', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, [(_vm.loading) ? _c('div', {
-    staticClass: "col-md-8 col-md-offset-2"
-  }, [_c('div', {
-    staticClass: "panel panel-default"
-  }, [(_vm.loadingError == null) ? _c('div', {
-    staticClass: "panel-body"
-  }, [_vm._v("\n                    Daten werden geladen.\n                ")]) : _c('div', {
-    staticClass: "panel-body bg-danger"
-  }, [_vm._v("\n                    " + _vm._s(_vm.loadingError) + "\n                ")])])]) : _vm._e()]), _vm._v(" "), _c('transition', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, [(!_vm.loading) ? _c('div', {
-    staticClass: "col-md-8 col-md-offset-2"
-  }, [_c('form', {
-    on: {
-      "submit": function($event) {
-        $event.preventDefault();
-        _vm.store($event)
-      }
-    }
-  }, [_c('div', {
-    staticClass: "panel-group",
-    attrs: {
-      "id": "accordion",
-      "role": "tablist"
-    }
-  }, [_c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseOne"
-    }
-  }, [_vm._v("\n                                Basisdaten\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse in",
-    attrs: {
-      "id": "collapseOne",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group"
-  }, [_c('div', {
-    staticClass: "pull-right"
-  }, [_c('img', {
-    staticClass: "img-responsive",
-    attrs: {
-      "id": "cat-photo",
-      "src": _vm.form.image
-    }
-  })]), _vm._v(" "), _c('label', {
-    attrs: {
-      "for": "photo"
-    }
-  }, [_vm._v("Foto der Katze")]), _vm._v(" "), _c('input', {
-    attrs: {
-      "type": "file",
-      "id": "photo"
-    },
-    on: {
-      "change": _vm.onFileChange
-    }
-  }), _vm._v(" "), (_vm.error.photo) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.photo)
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "name"
-    }
-  }, [_vm._v("Name")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.name),
-      expression: "form.name"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "name",
-      "id": "name",
-      "placeholder": "Name",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.name)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.name = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "breed"
-    }
-  }, [_vm._v("Rasse")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.breed),
-      expression: "form.breed"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "breed",
-      "id": "breed",
-      "placeholder": "Rasse",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.breed)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.breed = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('color' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "color"
-    }
-  }, [_vm._v("Farbe*")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.color),
-      expression: "form.color"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "color",
-      "id": "color",
-      "placeholder": "Farbe",
-      "disabled": _vm.inProgress,
-      "required": ""
-    },
-    domProps: {
-      "value": (_vm.form.color)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.color = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('color' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.color[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('date_of_birth' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "date_of_birth"
-    }
-  }, [_vm._v("Geburtstdatum")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.date_of_birth),
-      expression: "form.date_of_birth"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "date_of_birth",
-      "id": "date_of_birth",
-      "placeholder": "Geburtstdatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.date_of_birth)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.date_of_birth = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('date_of_birth' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.date_of_birth[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "radio",
-    class: {
-      'has-error': ('is_male' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    staticClass: "radio-inline"
-  }, [_c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_male),
-      expression: "form.is_male"
-    }],
-    attrs: {
-      "type": "radio",
-      "name": "is_male",
-      "value": "1",
-      "checked": ""
-    },
-    domProps: {
-      "checked": _vm._q(_vm.form.is_male, "1")
-    },
-    on: {
-      "__c": function($event) {
-        _vm.form.is_male = "1"
-      }
-    }
-  }), _vm._v("\n                                        männlich\n                                    ")]), _vm._v(" "), _c('label', {
-    staticClass: "radio-inline"
-  }, [_c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_male),
-      expression: "form.is_male"
-    }],
-    attrs: {
-      "type": "radio",
-      "name": "is_male",
-      "value": "0",
-      "checked": ""
-    },
-    domProps: {
-      "checked": _vm._q(_vm.form.is_male, "0")
-    },
-    on: {
-      "__c": function($event) {
-        _vm.form.is_male = "0"
-      }
-    }
-  }), _vm._v("\n                                        weiblich\n                                    ")]), _c('br'), _vm._v(" "), (('is_male' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.is_male[0])
-    }
-  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseTwo"
-    }
-  }, [_vm._v("\n                                Aufnahme und Abgabe\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseTwo",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('registration_date' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "entry_date"
-    }
-  }, [_vm._v("Aufnahmedatum")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.registration_date),
-      expression: "form.registration_date"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "entry_date",
-      "id": "entry_date",
-      "placeholder": "Aufnahmedatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.registration_date)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.registration_date = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('registration_date' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.registration_date[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('leave_date' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "leave_date"
-    }
-  }, [_vm._v("Abgabedatum")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.leave_date),
-      expression: "form.leave_date"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "leave_date",
-      "id": "leave_date",
-      "placeholder": "Abgabedatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.leave_date)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.leave_date = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('leave_date' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.leave_date[0])
-    }
-  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseThree"
-    }
-  }, [_vm._v("\n                                Aufenthaltsort\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseThree",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "location"
-    }
-  }, [_vm._v("Ortsname")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.location),
-      expression: "form.location"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "location",
-      "id": "location",
-      "placeholder": "Ort, z. B. Fam. Müller",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.location)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.location = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "street"
-    }
-  }, [_vm._v("Straße und Hausnummer")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.street),
-      expression: "form.street"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "street",
-      "id": "street",
-      "placeholder": "z. B. Musterstr. 42",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.street)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.street = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "city"
-    }
-  }, [_vm._v("PLZ und Ort")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.city),
-      expression: "form.city"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "city",
-      "id": "city",
-      "placeholder": "z. B. 49074 Osnabrück",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.city)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.city = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "country"
-    }
-  }, [_vm._v("Land")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.country),
-      expression: "form.country"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "country",
-      "id": "country",
-      "placeholder": "z. B. Deutschland",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.country)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.country = $event.target.value
-      }
-    }
-  })])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseFour"
-    }
-  }, [_vm._v("\n                                Kastration\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseFour",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('is_castrated' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "is_castrated"
-    }
-  }, [_vm._v("Ist die Katze kastriert?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_castrated),
-      expression: "form.is_castrated"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "is_castrated",
-      "id": "is_castrated"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_castrated) ? _vm._i(_vm.form.is_castrated, null) > -1 : (_vm.form.is_castrated)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_castrated,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_castrated = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_castrated = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
-          }
-        } else {
-          _vm.form.is_castrated = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (('is_castrated' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.is_castrated[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('transition', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, [(_vm.form.is_castrated) ? _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('castration_date' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "castration_date"
-    }
-  }, [_vm._v("Kastrationsdatum")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.castration_date),
-      expression: "form.castration_date"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "castration_date",
-      "id": "castration_date",
-      "placeholder": "Kastrationsdatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.castration_date)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.castration_date = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('castration_date' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.castration_date[0])
-    }
-  }) : _vm._e()]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseFive"
-    }
-  }, [_vm._v("\n                                Impfungen\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseFive",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('first_vaccination' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "first_vaccination"
-    }
-  }, [_vm._v("Erste Impfung")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.first_vaccination),
-      expression: "form.first_vaccination"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "first_vaccination",
-      "id": "first_vaccination",
-      "placeholder": "Erste Impfung",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.first_vaccination)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.first_vaccination = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('first_vaccination' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.first_vaccination[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('second_vaccination' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "second_vaccination"
-    }
-  }, [_vm._v("Zweite Impfung")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.second_vaccination),
-      expression: "form.second_vaccination"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "second_vaccination",
-      "id": "second_vaccination",
-      "placeholder": "Zweite Impfung",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.second_vaccination)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.second_vaccination = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('second_vaccination' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.second_vaccination[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('next_vaccination' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "first_vaccination"
-    }
-  }, [_vm._v("Nächste Impfung")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.next_vaccination),
-      expression: "form.next_vaccination"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "next_vaccination",
-      "placeholder": "Nächste Impfung",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.next_vaccination)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.next_vaccination = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('next_vaccination' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.next_vaccination[0])
-    }
-  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseSix"
-    }
-  }, [_vm._v("\n                                Tätowierung\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseSix",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('tattoo_left' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "tattoo_left"
-    }
-  }, [_vm._v("Tätowierung links")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.tattoo_left),
-      expression: "form.tattoo_left"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "tattoo_left",
-      "id": "tattoo_left",
-      "placeholder": "Tätowierung links",
-      "maxlength": "5",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.tattoo_left)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.tattoo_left = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('tattoo_left' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.tattoo_left[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('tattoo_right' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "tattoo_right"
-    }
-  }, [_vm._v("Tätowierung rechts")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.tattoo_right),
-      expression: "form.tattoo_right"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "tattoo_right",
-      "id": "tattoo_right",
-      "placeholder": "Tätowierung links",
-      "maxlength": "5",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.tattoo_right)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.tattoo_right = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('tattoo_right' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.tattoo_right[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('chip' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "chip"
-    }
-  }, [_vm._v("Chip")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.chip),
-      expression: "form.chip"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "name": "chip",
-      "id": "chip",
-      "placeholder": "Chipnummer",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.chip)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.chip = $event.target.value
-      }
-    }
-  }), _vm._v(" "), (('chip' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.chip[0])
-    }
-  }) : _vm._e()])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseSeven"
-    }
-  }, [_vm._v("\n                                Kommentare und Merkmale\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseSeven",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "distinguishing_marks"
-    }
-  }, [_vm._v("Merkmale")]), _vm._v(" "), _c('textarea', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.distinguishing_marks),
-      expression: "form.distinguishing_marks"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "id": "distinguishing_marks",
-      "rows": "3",
-      "disabled": _vm.inProgress,
-      "placeholder": "Merkmale, z. B. Knick im Schwanz"
-    },
-    domProps: {
-      "value": (_vm.form.distinguishing_marks)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.distinguishing_marks = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "comments"
-    }
-  }, [_vm._v("Kommentare")]), _vm._v(" "), _c('textarea', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.comments),
-      expression: "form.comments"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "id": "comments",
-      "rows": "3",
-      "disabled": _vm.inProgress,
-      "placeholder": "Kommentare, z. B. Übergabe an Gabi"
-    },
-    domProps: {
-      "value": (_vm.form.comments)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.comments = $event.target.value
-      }
-    }
-  })])])])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseEight"
-    }
-  }, [_vm._v("\n                                Todesfall\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseEight",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('deceased' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "deceased"
-    }
-  }, [_vm._v("Ist die Katze verstorben?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.deceased),
-      expression: "form.deceased"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "deceased",
-      "id": "deceased"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.deceased) ? _vm._i(_vm.form.deceased, null) > -1 : (_vm.form.deceased)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.deceased,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.deceased = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.deceased = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
-          }
-        } else {
-          _vm.form.deceased = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (('deceased' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.deceased[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('transition', {
-    attrs: {
-      "name": "component-fade",
-      "mode": "out-in"
-    }
-  }, [(_vm.form.deceased) ? _c('div', {
-    staticClass: "form-group"
-  }, [_c('label', {
-    attrs: {
-      "for": "castration_date"
-    }
-  }, [_vm._v("Todesursache")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.cause_of_death),
-      expression: "form.cause_of_death"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "date",
-      "name": "cause_of_death",
-      "placeholder": "Kastrationsdatum",
-      "disabled": _vm.inProgress
-    },
-    domProps: {
-      "value": (_vm.form.cause_of_death)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.form.cause_of_death = $event.target.value
-      }
-    }
-  })]) : _vm._e()])], 1)])]), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-default"
-  }, [_c('div', {
-    staticClass: "panel-heading",
-    attrs: {
-      "role": "tab"
-    }
-  }, [_c('a', {
-    attrs: {
-      "role": "button",
-      "data-toggle": "collapse",
-      "href": "#collapseNine"
-    }
-  }, [_vm._v("\n                                Eigenschaften\n                            ")])]), _vm._v(" "), _c('div', {
-    staticClass: "panel-collapse collapse",
-    attrs: {
-      "id": "collapseNine",
-      "role": "tabpanel"
-    }
-  }, [_c('div', {
-    staticClass: "panel-body"
-  }, [_c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('is_outdoor_cat' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "outdoor"
-    }
-  }, [_vm._v("Außenkatze?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_outdoor_cat),
-      expression: "form.is_outdoor_cat"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "outdoor",
-      "id": "outdoor"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_outdoor_cat) ? _vm._i(_vm.form.is_outdoor_cat, null) > -1 : (_vm.form.is_outdoor_cat)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_outdoor_cat,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_outdoor_cat = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_outdoor_cat = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
-          }
-        } else {
-          _vm.form.is_outdoor_cat = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (('is_outdoor_cat' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.is_outdoor_cat[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('is_indoor_cat' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "indoor"
-    }
-  }, [_vm._v("Innenkatze?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_indoor_cat),
-      expression: "form.is_indoor_cat"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "indoor",
-      "id": "indoor"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_indoor_cat) ? _vm._i(_vm.form.is_indoor_cat, null) > -1 : (_vm.form.is_indoor_cat)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_indoor_cat,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_indoor_cat = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_indoor_cat = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
-          }
-        } else {
-          _vm.form.is_indoor_cat = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (('is_indoor_cat' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.is_indoor_cat[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('is_cat_friendly' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "cat_friendly"
-    }
-  }, [_vm._v("Katzenfreundlich?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_cat_friendly),
-      expression: "form.is_cat_friendly"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "cat_friendly",
-      "id": "cat_friendly"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_cat_friendly) ? _vm._i(_vm.form.is_cat_friendly, null) > -1 : (_vm.form.is_cat_friendly)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_cat_friendly,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_cat_friendly = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_cat_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
-          }
-        } else {
-          _vm.form.is_cat_friendly = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (('is_cat_friendly' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.is_cat_friendly[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('is_dog_friendly' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "dog_friendly"
-    }
-  }, [_vm._v("Hundefreundlich?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_dog_friendly),
-      expression: "form.is_dog_friendly"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "dog_friendly",
-      "id": "dog_friendly"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_dog_friendly) ? _vm._i(_vm.form.is_dog_friendly, null) > -1 : (_vm.form.is_dog_friendly)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_dog_friendly,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_dog_friendly = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_dog_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
-          }
-        } else {
-          _vm.form.is_dog_friendly = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (('is_dog_friendly' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.is_dog_friendly[0])
-    }
-  }) : _vm._e()]), _vm._v(" "), _c('div', {
-    staticClass: "form-group",
-    class: {
-      'has-error': ('is_child_friendly' in _vm.error.errors)
-    }
-  }, [_c('label', {
-    attrs: {
-      "for": "child_friendly"
-    }
-  }, [_vm._v("Kinderfreundlich?")]), _vm._v(" "), _c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.form.is_child_friendly),
-      expression: "form.is_child_friendly"
-    }],
-    attrs: {
-      "type": "checkbox",
-      "name": "child_friendly",
-      "id": "child_friendly"
-    },
-    domProps: {
-      "checked": Array.isArray(_vm.form.is_child_friendly) ? _vm._i(_vm.form.is_child_friendly, null) > -1 : (_vm.form.is_child_friendly)
-    },
-    on: {
-      "__c": function($event) {
-        var $$a = _vm.form.is_child_friendly,
-          $$el = $event.target,
-          $$c = $$el.checked ? (true) : (false);
-        if (Array.isArray($$a)) {
-          var $$v = null,
-            $$i = _vm._i($$a, $$v);
-          if ($$el.checked) {
-            $$i < 0 && (_vm.form.is_child_friendly = $$a.concat($$v))
-          } else {
-            $$i > -1 && (_vm.form.is_child_friendly = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
-          }
-        } else {
-          _vm.form.is_child_friendly = $$c
-        }
-      }
-    }
-  }), _c('br'), _vm._v(" "), (('is_child_friendly' in _vm.error.errors)) ? _c('p', {
-    staticClass: "text-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error.errors.is_child_friendly[0])
-    }
-  }) : _vm._e()])])])])]), _vm._v(" "), _c('button', {
-    staticClass: "btn btn-primary pull-right",
-    attrs: {
-      "type": "submit",
-      "disabled": _vm.inProgress
-    }
-  }, [_vm._v("speichern")])])]) : _vm._e()])], 1)
-},staticRenderFns: []}
-module.exports.render._withStripped = true
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c(
+    "div",
+    { staticClass: "row" },
+    [
+      _c("transition", { attrs: { name: "component-fade", mode: "out-in" } }, [
+        _vm.loading
+          ? _c("div", { staticClass: "col-md-8 col-md-offset-2" }, [
+              _c("div", { staticClass: "panel panel-default" }, [
+                _vm.loadingError == null
+                  ? _c("div", { staticClass: "panel-body" }, [
+                      _vm._v(
+                        "\n                    Daten werden geladen.\n                "
+                      )
+                    ])
+                  : _c("div", { staticClass: "panel-body bg-danger" }, [
+                      _vm._v(
+                        "\n                    " +
+                          _vm._s(_vm.loadingError) +
+                          "\n                "
+                      )
+                    ])
+              ])
+            ])
+          : _vm._e()
+      ]),
+      _vm._v(" "),
+      _c("transition", { attrs: { name: "component-fade", mode: "out-in" } }, [
+        !_vm.loading
+          ? _c("div", { staticClass: "col-md-8 col-md-offset-2" }, [
+              _c(
+                "form",
+                {
+                  on: {
+                    submit: function($event) {
+                      $event.preventDefault()
+                      _vm.store($event)
+                    }
+                  }
+                },
+                [
+                  _c(
+                    "div",
+                    {
+                      staticClass: "panel-group",
+                      attrs: { id: "accordion", role: "tablist" }
+                    },
+                    [
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseOne"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Basisdaten\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse in",
+                            attrs: { id: "collapseOne", role: "tabpanel" }
+                          },
+                          [
+                            _c("div", { staticClass: "panel-body" }, [
+                              _c("div", { staticClass: "form-group" }, [
+                                _c("div", { staticClass: "pull-right" }, [
+                                  _c("img", {
+                                    staticClass: "img-responsive",
+                                    attrs: {
+                                      id: "cat-photo",
+                                      src: _vm.form.image
+                                    }
+                                  })
+                                ]),
+                                _vm._v(" "),
+                                _c("label", { attrs: { for: "photo" } }, [
+                                  _vm._v("Foto der Katze")
+                                ]),
+                                _vm._v(" "),
+                                _c("input", {
+                                  attrs: { type: "file", id: "photo" },
+                                  on: { change: _vm.onFileChange }
+                                }),
+                                _vm._v(" "),
+                                _vm.error.photo
+                                  ? _c("p", {
+                                      staticClass: "text-danger",
+                                      attrs: { role: "alert" },
+                                      domProps: {
+                                        textContent: _vm._s(_vm.error.photo)
+                                      }
+                                    })
+                                  : _vm._e()
+                              ]),
+                              _vm._v(" "),
+                              _c("div", { staticClass: "form-group" }, [
+                                _c("label", { attrs: { for: "name" } }, [
+                                  _vm._v("Name")
+                                ]),
+                                _vm._v(" "),
+                                _c("input", {
+                                  directives: [
+                                    {
+                                      name: "model",
+                                      rawName: "v-model",
+                                      value: _vm.form.name,
+                                      expression: "form.name"
+                                    }
+                                  ],
+                                  staticClass: "form-control",
+                                  attrs: {
+                                    type: "text",
+                                    name: "name",
+                                    id: "name",
+                                    placeholder: "Name",
+                                    disabled: _vm.inProgress
+                                  },
+                                  domProps: { value: _vm.form.name },
+                                  on: {
+                                    input: function($event) {
+                                      if ($event.target.composing) {
+                                        return
+                                      }
+                                      _vm.$set(
+                                        _vm.form,
+                                        "name",
+                                        $event.target.value
+                                      )
+                                    }
+                                  }
+                                })
+                              ]),
+                              _vm._v(" "),
+                              _c("div", { staticClass: "form-group" }, [
+                                _c("label", { attrs: { for: "breed" } }, [
+                                  _vm._v("Rasse")
+                                ]),
+                                _vm._v(" "),
+                                _c("input", {
+                                  directives: [
+                                    {
+                                      name: "model",
+                                      rawName: "v-model",
+                                      value: _vm.form.breed,
+                                      expression: "form.breed"
+                                    }
+                                  ],
+                                  staticClass: "form-control",
+                                  attrs: {
+                                    type: "text",
+                                    name: "breed",
+                                    id: "breed",
+                                    placeholder: "Rasse",
+                                    disabled: _vm.inProgress
+                                  },
+                                  domProps: { value: _vm.form.breed },
+                                  on: {
+                                    input: function($event) {
+                                      if ($event.target.composing) {
+                                        return
+                                      }
+                                      _vm.$set(
+                                        _vm.form,
+                                        "breed",
+                                        $event.target.value
+                                      )
+                                    }
+                                  }
+                                })
+                              ]),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error": "color" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c("label", { attrs: { for: "color" } }, [
+                                    _vm._v("Farbe*")
+                                  ]),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.color,
+                                        expression: "form.color"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "text",
+                                      name: "color",
+                                      id: "color",
+                                      placeholder: "Farbe",
+                                      disabled: _vm.inProgress,
+                                      required: ""
+                                    },
+                                    domProps: { value: _vm.form.color },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "color",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "color" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.color[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "date_of_birth" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "date_of_birth" } },
+                                    [_vm._v("Geburtstdatum")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.date_of_birth,
+                                        expression: "form.date_of_birth"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "date",
+                                      name: "date_of_birth",
+                                      id: "date_of_birth",
+                                      placeholder: "Geburtstdatum",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: { value: _vm.form.date_of_birth },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "date_of_birth",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "date_of_birth" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.date_of_birth[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "radio",
+                                  class: {
+                                    "has-error": "is_male" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c("label", { staticClass: "radio-inline" }, [
+                                    _c("input", {
+                                      directives: [
+                                        {
+                                          name: "model",
+                                          rawName: "v-model",
+                                          value: _vm.form.is_male,
+                                          expression: "form.is_male"
+                                        }
+                                      ],
+                                      attrs: {
+                                        type: "radio",
+                                        name: "is_male",
+                                        value: "1",
+                                        checked: ""
+                                      },
+                                      domProps: {
+                                        checked: _vm._q(_vm.form.is_male, "1")
+                                      },
+                                      on: {
+                                        change: function($event) {
+                                          _vm.$set(_vm.form, "is_male", "1")
+                                        }
+                                      }
+                                    }),
+                                    _vm._v(
+                                      "\n                                        männlich\n                                    "
+                                    )
+                                  ]),
+                                  _vm._v(" "),
+                                  _c("label", { staticClass: "radio-inline" }, [
+                                    _c("input", {
+                                      directives: [
+                                        {
+                                          name: "model",
+                                          rawName: "v-model",
+                                          value: _vm.form.is_male,
+                                          expression: "form.is_male"
+                                        }
+                                      ],
+                                      attrs: {
+                                        type: "radio",
+                                        name: "is_male",
+                                        value: "0",
+                                        checked: ""
+                                      },
+                                      domProps: {
+                                        checked: _vm._q(_vm.form.is_male, "0")
+                                      },
+                                      on: {
+                                        change: function($event) {
+                                          _vm.$set(_vm.form, "is_male", "0")
+                                        }
+                                      }
+                                    }),
+                                    _vm._v(
+                                      "\n                                        weiblich\n                                    "
+                                    )
+                                  ]),
+                                  _c("br"),
+                                  _vm._v(" "),
+                                  "is_male" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.is_male[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              )
+                            ])
+                          ]
+                        )
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseTwo"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Aufnahme und Abgabe\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse",
+                            attrs: { id: "collapseTwo", role: "tabpanel" }
+                          },
+                          [
+                            _c("div", { staticClass: "panel-body" }, [
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "registration_date" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "entry_date" } },
+                                    [_vm._v("Aufnahmedatum")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.registration_date,
+                                        expression: "form.registration_date"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "date",
+                                      name: "entry_date",
+                                      id: "entry_date",
+                                      placeholder: "Aufnahmedatum",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: {
+                                      value: _vm.form.registration_date
+                                    },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "registration_date",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "registration_date" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors
+                                              .registration_date[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "leave_date" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "leave_date" } },
+                                    [_vm._v("Abgabedatum")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.leave_date,
+                                        expression: "form.leave_date"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "date",
+                                      name: "leave_date",
+                                      id: "leave_date",
+                                      placeholder: "Abgabedatum",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: { value: _vm.form.leave_date },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "leave_date",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "leave_date" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.leave_date[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              )
+                            ])
+                          ]
+                        )
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseThree"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Aufenthaltsort\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse",
+                            attrs: { id: "collapseThree", role: "tabpanel" }
+                          },
+                          [
+                            _c("div", { staticClass: "panel-body" }, [
+                              _c("div", { staticClass: "form-group" }, [
+                                _c("label", { attrs: { for: "location" } }, [
+                                  _vm._v("Ortsname")
+                                ]),
+                                _vm._v(" "),
+                                _c("input", {
+                                  directives: [
+                                    {
+                                      name: "model",
+                                      rawName: "v-model",
+                                      value: _vm.form.location,
+                                      expression: "form.location"
+                                    }
+                                  ],
+                                  staticClass: "form-control",
+                                  attrs: {
+                                    type: "text",
+                                    name: "location",
+                                    id: "location",
+                                    placeholder: "Ort, z. B. Fam. Müller",
+                                    disabled: _vm.inProgress
+                                  },
+                                  domProps: { value: _vm.form.location },
+                                  on: {
+                                    input: function($event) {
+                                      if ($event.target.composing) {
+                                        return
+                                      }
+                                      _vm.$set(
+                                        _vm.form,
+                                        "location",
+                                        $event.target.value
+                                      )
+                                    }
+                                  }
+                                })
+                              ]),
+                              _vm._v(" "),
+                              _c("div", { staticClass: "form-group" }, [
+                                _c("label", { attrs: { for: "street" } }, [
+                                  _vm._v("Straße und Hausnummer")
+                                ]),
+                                _vm._v(" "),
+                                _c("input", {
+                                  directives: [
+                                    {
+                                      name: "model",
+                                      rawName: "v-model",
+                                      value: _vm.form.street,
+                                      expression: "form.street"
+                                    }
+                                  ],
+                                  staticClass: "form-control",
+                                  attrs: {
+                                    type: "text",
+                                    name: "street",
+                                    id: "street",
+                                    placeholder: "z. B. Musterstr. 42",
+                                    disabled: _vm.inProgress
+                                  },
+                                  domProps: { value: _vm.form.street },
+                                  on: {
+                                    input: function($event) {
+                                      if ($event.target.composing) {
+                                        return
+                                      }
+                                      _vm.$set(
+                                        _vm.form,
+                                        "street",
+                                        $event.target.value
+                                      )
+                                    }
+                                  }
+                                })
+                              ]),
+                              _vm._v(" "),
+                              _c("div", { staticClass: "form-group" }, [
+                                _c("label", { attrs: { for: "city" } }, [
+                                  _vm._v("PLZ und Ort")
+                                ]),
+                                _vm._v(" "),
+                                _c("input", {
+                                  directives: [
+                                    {
+                                      name: "model",
+                                      rawName: "v-model",
+                                      value: _vm.form.city,
+                                      expression: "form.city"
+                                    }
+                                  ],
+                                  staticClass: "form-control",
+                                  attrs: {
+                                    type: "text",
+                                    name: "city",
+                                    id: "city",
+                                    placeholder: "z. B. 49074 Osnabrück",
+                                    disabled: _vm.inProgress
+                                  },
+                                  domProps: { value: _vm.form.city },
+                                  on: {
+                                    input: function($event) {
+                                      if ($event.target.composing) {
+                                        return
+                                      }
+                                      _vm.$set(
+                                        _vm.form,
+                                        "city",
+                                        $event.target.value
+                                      )
+                                    }
+                                  }
+                                })
+                              ]),
+                              _vm._v(" "),
+                              _c("div", { staticClass: "form-group" }, [
+                                _c("label", { attrs: { for: "country" } }, [
+                                  _vm._v("Land")
+                                ]),
+                                _vm._v(" "),
+                                _c("input", {
+                                  directives: [
+                                    {
+                                      name: "model",
+                                      rawName: "v-model",
+                                      value: _vm.form.country,
+                                      expression: "form.country"
+                                    }
+                                  ],
+                                  staticClass: "form-control",
+                                  attrs: {
+                                    type: "text",
+                                    name: "country",
+                                    id: "country",
+                                    placeholder: "z. B. Deutschland",
+                                    disabled: _vm.inProgress
+                                  },
+                                  domProps: { value: _vm.form.country },
+                                  on: {
+                                    input: function($event) {
+                                      if ($event.target.composing) {
+                                        return
+                                      }
+                                      _vm.$set(
+                                        _vm.form,
+                                        "country",
+                                        $event.target.value
+                                      )
+                                    }
+                                  }
+                                })
+                              ])
+                            ])
+                          ]
+                        )
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseFour"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Kastration\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse",
+                            attrs: { id: "collapseFour", role: "tabpanel" }
+                          },
+                          [
+                            _c(
+                              "div",
+                              { staticClass: "panel-body" },
+                              [
+                                _c(
+                                  "div",
+                                  {
+                                    staticClass: "form-group",
+                                    class: {
+                                      "has-error":
+                                        "is_castrated" in _vm.error.errors
+                                    }
+                                  },
+                                  [
+                                    _c(
+                                      "label",
+                                      { attrs: { for: "is_castrated" } },
+                                      [_vm._v("Ist die Katze kastriert?")]
+                                    ),
+                                    _vm._v(" "),
+                                    _c("input", {
+                                      directives: [
+                                        {
+                                          name: "model",
+                                          rawName: "v-model",
+                                          value: _vm.form.is_castrated,
+                                          expression: "form.is_castrated"
+                                        }
+                                      ],
+                                      attrs: {
+                                        type: "checkbox",
+                                        name: "is_castrated",
+                                        id: "is_castrated"
+                                      },
+                                      domProps: {
+                                        checked: Array.isArray(
+                                          _vm.form.is_castrated
+                                        )
+                                          ? _vm._i(
+                                              _vm.form.is_castrated,
+                                              null
+                                            ) > -1
+                                          : _vm.form.is_castrated
+                                      },
+                                      on: {
+                                        change: function($event) {
+                                          var $$a = _vm.form.is_castrated,
+                                            $$el = $event.target,
+                                            $$c = $$el.checked ? true : false
+                                          if (Array.isArray($$a)) {
+                                            var $$v = null,
+                                              $$i = _vm._i($$a, $$v)
+                                            if ($$el.checked) {
+                                              $$i < 0 &&
+                                                (_vm.form.is_castrated = $$a.concat(
+                                                  [$$v]
+                                                ))
+                                            } else {
+                                              $$i > -1 &&
+                                                (_vm.form.is_castrated = $$a
+                                                  .slice(0, $$i)
+                                                  .concat($$a.slice($$i + 1)))
+                                            }
+                                          } else {
+                                            _vm.$set(
+                                              _vm.form,
+                                              "is_castrated",
+                                              $$c
+                                            )
+                                          }
+                                        }
+                                      }
+                                    }),
+                                    _c("br"),
+                                    _vm._v(" "),
+                                    "is_castrated" in _vm.error.errors
+                                      ? _c("p", {
+                                          staticClass: "text-danger",
+                                          attrs: { role: "alert" },
+                                          domProps: {
+                                            textContent: _vm._s(
+                                              _vm.error.errors.is_castrated[0]
+                                            )
+                                          }
+                                        })
+                                      : _vm._e()
+                                  ]
+                                ),
+                                _vm._v(" "),
+                                _c(
+                                  "transition",
+                                  {
+                                    attrs: {
+                                      name: "component-fade",
+                                      mode: "out-in"
+                                    }
+                                  },
+                                  [
+                                    _vm.form.is_castrated
+                                      ? _c(
+                                          "div",
+                                          {
+                                            staticClass: "form-group",
+                                            class: {
+                                              "has-error":
+                                                "castration_date" in
+                                                _vm.error.errors
+                                            }
+                                          },
+                                          [
+                                            _c(
+                                              "label",
+                                              {
+                                                attrs: {
+                                                  for: "castration_date"
+                                                }
+                                              },
+                                              [_vm._v("Kastrationsdatum")]
+                                            ),
+                                            _vm._v(" "),
+                                            _c("input", {
+                                              directives: [
+                                                {
+                                                  name: "model",
+                                                  rawName: "v-model",
+                                                  value:
+                                                    _vm.form.castration_date,
+                                                  expression:
+                                                    "form.castration_date"
+                                                }
+                                              ],
+                                              staticClass: "form-control",
+                                              attrs: {
+                                                type: "date",
+                                                name: "castration_date",
+                                                id: "castration_date",
+                                                placeholder: "Kastrationsdatum",
+                                                disabled: _vm.inProgress
+                                              },
+                                              domProps: {
+                                                value: _vm.form.castration_date
+                                              },
+                                              on: {
+                                                input: function($event) {
+                                                  if ($event.target.composing) {
+                                                    return
+                                                  }
+                                                  _vm.$set(
+                                                    _vm.form,
+                                                    "castration_date",
+                                                    $event.target.value
+                                                  )
+                                                }
+                                              }
+                                            }),
+                                            _vm._v(" "),
+                                            "castration_date" in
+                                            _vm.error.errors
+                                              ? _c("p", {
+                                                  staticClass: "text-danger",
+                                                  attrs: { role: "alert" },
+                                                  domProps: {
+                                                    textContent: _vm._s(
+                                                      _vm.error.errors
+                                                        .castration_date[0]
+                                                    )
+                                                  }
+                                                })
+                                              : _vm._e()
+                                          ]
+                                        )
+                                      : _vm._e()
+                                  ]
+                                )
+                              ],
+                              1
+                            )
+                          ]
+                        )
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseFive"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Impfungen\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse",
+                            attrs: { id: "collapseFive", role: "tabpanel" }
+                          },
+                          [
+                            _c("div", { staticClass: "panel-body" }, [
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "first_vaccination" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "first_vaccination" } },
+                                    [_vm._v("Erste Impfung")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.first_vaccination,
+                                        expression: "form.first_vaccination"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "date",
+                                      name: "first_vaccination",
+                                      id: "first_vaccination",
+                                      placeholder: "Erste Impfung",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: {
+                                      value: _vm.form.first_vaccination
+                                    },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "first_vaccination",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "first_vaccination" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors
+                                              .first_vaccination[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "second_vaccination" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "second_vaccination" } },
+                                    [_vm._v("Zweite Impfung")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.second_vaccination,
+                                        expression: "form.second_vaccination"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "date",
+                                      name: "second_vaccination",
+                                      id: "second_vaccination",
+                                      placeholder: "Zweite Impfung",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: {
+                                      value: _vm.form.second_vaccination
+                                    },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "second_vaccination",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "second_vaccination" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors
+                                              .second_vaccination[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "next_vaccination" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "first_vaccination" } },
+                                    [_vm._v("Nächste Impfung")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.next_vaccination,
+                                        expression: "form.next_vaccination"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "date",
+                                      name: "next_vaccination",
+                                      placeholder: "Nächste Impfung",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: {
+                                      value: _vm.form.next_vaccination
+                                    },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "next_vaccination",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "next_vaccination" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.next_vaccination[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              )
+                            ])
+                          ]
+                        )
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseSix"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Tätowierung\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse",
+                            attrs: { id: "collapseSix", role: "tabpanel" }
+                          },
+                          [
+                            _c("div", { staticClass: "panel-body" }, [
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "tattoo_left" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "tattoo_left" } },
+                                    [_vm._v("Tätowierung links")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.tattoo_left,
+                                        expression: "form.tattoo_left"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "text",
+                                      name: "tattoo_left",
+                                      id: "tattoo_left",
+                                      placeholder: "Tätowierung links",
+                                      maxlength: "5",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: { value: _vm.form.tattoo_left },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "tattoo_left",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "tattoo_left" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.tattoo_left[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "tattoo_right" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "tattoo_right" } },
+                                    [_vm._v("Tätowierung rechts")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.tattoo_right,
+                                        expression: "form.tattoo_right"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "text",
+                                      name: "tattoo_right",
+                                      id: "tattoo_right",
+                                      placeholder: "Tätowierung links",
+                                      maxlength: "5",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: { value: _vm.form.tattoo_right },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "tattoo_right",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "tattoo_right" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.tattoo_right[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error": "chip" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c("label", { attrs: { for: "chip" } }, [
+                                    _vm._v("Chip")
+                                  ]),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.chip,
+                                        expression: "form.chip"
+                                      }
+                                    ],
+                                    staticClass: "form-control",
+                                    attrs: {
+                                      type: "text",
+                                      name: "chip",
+                                      id: "chip",
+                                      placeholder: "Chipnummer",
+                                      disabled: _vm.inProgress
+                                    },
+                                    domProps: { value: _vm.form.chip },
+                                    on: {
+                                      input: function($event) {
+                                        if ($event.target.composing) {
+                                          return
+                                        }
+                                        _vm.$set(
+                                          _vm.form,
+                                          "chip",
+                                          $event.target.value
+                                        )
+                                      }
+                                    }
+                                  }),
+                                  _vm._v(" "),
+                                  "chip" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.chip[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              )
+                            ])
+                          ]
+                        )
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseSeven"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Kommentare und Merkmale\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse",
+                            attrs: { id: "collapseSeven", role: "tabpanel" }
+                          },
+                          [
+                            _c("div", { staticClass: "panel-body" }, [
+                              _c("div", { staticClass: "form-group" }, [
+                                _c(
+                                  "label",
+                                  { attrs: { for: "distinguishing_marks" } },
+                                  [_vm._v("Merkmale")]
+                                ),
+                                _vm._v(" "),
+                                _c("textarea", {
+                                  directives: [
+                                    {
+                                      name: "model",
+                                      rawName: "v-model",
+                                      value: _vm.form.distinguishing_marks,
+                                      expression: "form.distinguishing_marks"
+                                    }
+                                  ],
+                                  staticClass: "form-control",
+                                  attrs: {
+                                    id: "distinguishing_marks",
+                                    rows: "3",
+                                    disabled: _vm.inProgress,
+                                    placeholder:
+                                      "Merkmale, z. B. Knick im Schwanz"
+                                  },
+                                  domProps: {
+                                    value: _vm.form.distinguishing_marks
+                                  },
+                                  on: {
+                                    input: function($event) {
+                                      if ($event.target.composing) {
+                                        return
+                                      }
+                                      _vm.$set(
+                                        _vm.form,
+                                        "distinguishing_marks",
+                                        $event.target.value
+                                      )
+                                    }
+                                  }
+                                })
+                              ]),
+                              _vm._v(" "),
+                              _c("div", { staticClass: "form-group" }, [
+                                _c("label", { attrs: { for: "comments" } }, [
+                                  _vm._v("Kommentare")
+                                ]),
+                                _vm._v(" "),
+                                _c("textarea", {
+                                  directives: [
+                                    {
+                                      name: "model",
+                                      rawName: "v-model",
+                                      value: _vm.form.comments,
+                                      expression: "form.comments"
+                                    }
+                                  ],
+                                  staticClass: "form-control",
+                                  attrs: {
+                                    id: "comments",
+                                    rows: "3",
+                                    disabled: _vm.inProgress,
+                                    placeholder:
+                                      "Kommentare, z. B. Übergabe an Gabi"
+                                  },
+                                  domProps: { value: _vm.form.comments },
+                                  on: {
+                                    input: function($event) {
+                                      if ($event.target.composing) {
+                                        return
+                                      }
+                                      _vm.$set(
+                                        _vm.form,
+                                        "comments",
+                                        $event.target.value
+                                      )
+                                    }
+                                  }
+                                })
+                              ])
+                            ])
+                          ]
+                        )
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseEight"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Todesfall\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse",
+                            attrs: { id: "collapseEight", role: "tabpanel" }
+                          },
+                          [
+                            _c(
+                              "div",
+                              { staticClass: "panel-body" },
+                              [
+                                _c(
+                                  "div",
+                                  {
+                                    staticClass: "form-group",
+                                    class: {
+                                      "has-error":
+                                        "deceased" in _vm.error.errors
+                                    }
+                                  },
+                                  [
+                                    _c(
+                                      "label",
+                                      { attrs: { for: "deceased" } },
+                                      [_vm._v("Ist die Katze verstorben?")]
+                                    ),
+                                    _vm._v(" "),
+                                    _c("input", {
+                                      directives: [
+                                        {
+                                          name: "model",
+                                          rawName: "v-model",
+                                          value: _vm.form.deceased,
+                                          expression: "form.deceased"
+                                        }
+                                      ],
+                                      attrs: {
+                                        type: "checkbox",
+                                        name: "deceased",
+                                        id: "deceased"
+                                      },
+                                      domProps: {
+                                        checked: Array.isArray(
+                                          _vm.form.deceased
+                                        )
+                                          ? _vm._i(_vm.form.deceased, null) > -1
+                                          : _vm.form.deceased
+                                      },
+                                      on: {
+                                        change: function($event) {
+                                          var $$a = _vm.form.deceased,
+                                            $$el = $event.target,
+                                            $$c = $$el.checked ? true : false
+                                          if (Array.isArray($$a)) {
+                                            var $$v = null,
+                                              $$i = _vm._i($$a, $$v)
+                                            if ($$el.checked) {
+                                              $$i < 0 &&
+                                                (_vm.form.deceased = $$a.concat(
+                                                  [$$v]
+                                                ))
+                                            } else {
+                                              $$i > -1 &&
+                                                (_vm.form.deceased = $$a
+                                                  .slice(0, $$i)
+                                                  .concat($$a.slice($$i + 1)))
+                                            }
+                                          } else {
+                                            _vm.$set(_vm.form, "deceased", $$c)
+                                          }
+                                        }
+                                      }
+                                    }),
+                                    _c("br"),
+                                    _vm._v(" "),
+                                    "deceased" in _vm.error.errors
+                                      ? _c("p", {
+                                          staticClass: "text-danger",
+                                          attrs: { role: "alert" },
+                                          domProps: {
+                                            textContent: _vm._s(
+                                              _vm.error.errors.deceased[0]
+                                            )
+                                          }
+                                        })
+                                      : _vm._e()
+                                  ]
+                                ),
+                                _vm._v(" "),
+                                _c(
+                                  "transition",
+                                  {
+                                    attrs: {
+                                      name: "component-fade",
+                                      mode: "out-in"
+                                    }
+                                  },
+                                  [
+                                    _vm.form.deceased
+                                      ? _c(
+                                          "div",
+                                          { staticClass: "form-group" },
+                                          [
+                                            _c(
+                                              "label",
+                                              {
+                                                attrs: {
+                                                  for: "castration_date"
+                                                }
+                                              },
+                                              [_vm._v("Todesursache")]
+                                            ),
+                                            _vm._v(" "),
+                                            _c("input", {
+                                              directives: [
+                                                {
+                                                  name: "model",
+                                                  rawName: "v-model",
+                                                  value:
+                                                    _vm.form.cause_of_death,
+                                                  expression:
+                                                    "form.cause_of_death"
+                                                }
+                                              ],
+                                              staticClass: "form-control",
+                                              attrs: {
+                                                type: "date",
+                                                name: "cause_of_death",
+                                                placeholder: "Kastrationsdatum",
+                                                disabled: _vm.inProgress
+                                              },
+                                              domProps: {
+                                                value: _vm.form.cause_of_death
+                                              },
+                                              on: {
+                                                input: function($event) {
+                                                  if ($event.target.composing) {
+                                                    return
+                                                  }
+                                                  _vm.$set(
+                                                    _vm.form,
+                                                    "cause_of_death",
+                                                    $event.target.value
+                                                  )
+                                                }
+                                              }
+                                            })
+                                          ]
+                                        )
+                                      : _vm._e()
+                                  ]
+                                )
+                              ],
+                              1
+                            )
+                          ]
+                        )
+                      ]),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "panel panel-default" }, [
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-heading",
+                            attrs: { role: "tab" }
+                          },
+                          [
+                            _c(
+                              "a",
+                              {
+                                attrs: {
+                                  role: "button",
+                                  "data-toggle": "collapse",
+                                  href: "#collapseNine"
+                                }
+                              },
+                              [
+                                _vm._v(
+                                  "\n                                Eigenschaften\n                            "
+                                )
+                              ]
+                            )
+                          ]
+                        ),
+                        _vm._v(" "),
+                        _c(
+                          "div",
+                          {
+                            staticClass: "panel-collapse collapse",
+                            attrs: { id: "collapseNine", role: "tabpanel" }
+                          },
+                          [
+                            _c("div", { staticClass: "panel-body" }, [
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "is_outdoor_cat" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c("label", { attrs: { for: "outdoor" } }, [
+                                    _vm._v("Außenkatze?")
+                                  ]),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.is_outdoor_cat,
+                                        expression: "form.is_outdoor_cat"
+                                      }
+                                    ],
+                                    attrs: {
+                                      type: "checkbox",
+                                      name: "outdoor",
+                                      id: "outdoor"
+                                    },
+                                    domProps: {
+                                      checked: Array.isArray(
+                                        _vm.form.is_outdoor_cat
+                                      )
+                                        ? _vm._i(
+                                            _vm.form.is_outdoor_cat,
+                                            null
+                                          ) > -1
+                                        : _vm.form.is_outdoor_cat
+                                    },
+                                    on: {
+                                      change: function($event) {
+                                        var $$a = _vm.form.is_outdoor_cat,
+                                          $$el = $event.target,
+                                          $$c = $$el.checked ? true : false
+                                        if (Array.isArray($$a)) {
+                                          var $$v = null,
+                                            $$i = _vm._i($$a, $$v)
+                                          if ($$el.checked) {
+                                            $$i < 0 &&
+                                              (_vm.form.is_outdoor_cat = $$a.concat(
+                                                [$$v]
+                                              ))
+                                          } else {
+                                            $$i > -1 &&
+                                              (_vm.form.is_outdoor_cat = $$a
+                                                .slice(0, $$i)
+                                                .concat($$a.slice($$i + 1)))
+                                          }
+                                        } else {
+                                          _vm.$set(
+                                            _vm.form,
+                                            "is_outdoor_cat",
+                                            $$c
+                                          )
+                                        }
+                                      }
+                                    }
+                                  }),
+                                  _c("br"),
+                                  _vm._v(" "),
+                                  "is_outdoor_cat" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.is_outdoor_cat[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "is_indoor_cat" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c("label", { attrs: { for: "indoor" } }, [
+                                    _vm._v("Innenkatze?")
+                                  ]),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.is_indoor_cat,
+                                        expression: "form.is_indoor_cat"
+                                      }
+                                    ],
+                                    attrs: {
+                                      type: "checkbox",
+                                      name: "indoor",
+                                      id: "indoor"
+                                    },
+                                    domProps: {
+                                      checked: Array.isArray(
+                                        _vm.form.is_indoor_cat
+                                      )
+                                        ? _vm._i(_vm.form.is_indoor_cat, null) >
+                                          -1
+                                        : _vm.form.is_indoor_cat
+                                    },
+                                    on: {
+                                      change: function($event) {
+                                        var $$a = _vm.form.is_indoor_cat,
+                                          $$el = $event.target,
+                                          $$c = $$el.checked ? true : false
+                                        if (Array.isArray($$a)) {
+                                          var $$v = null,
+                                            $$i = _vm._i($$a, $$v)
+                                          if ($$el.checked) {
+                                            $$i < 0 &&
+                                              (_vm.form.is_indoor_cat = $$a.concat(
+                                                [$$v]
+                                              ))
+                                          } else {
+                                            $$i > -1 &&
+                                              (_vm.form.is_indoor_cat = $$a
+                                                .slice(0, $$i)
+                                                .concat($$a.slice($$i + 1)))
+                                          }
+                                        } else {
+                                          _vm.$set(
+                                            _vm.form,
+                                            "is_indoor_cat",
+                                            $$c
+                                          )
+                                        }
+                                      }
+                                    }
+                                  }),
+                                  _c("br"),
+                                  _vm._v(" "),
+                                  "is_indoor_cat" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.is_indoor_cat[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "is_cat_friendly" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "cat_friendly" } },
+                                    [_vm._v("Katzenfreundlich?")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.is_cat_friendly,
+                                        expression: "form.is_cat_friendly"
+                                      }
+                                    ],
+                                    attrs: {
+                                      type: "checkbox",
+                                      name: "cat_friendly",
+                                      id: "cat_friendly"
+                                    },
+                                    domProps: {
+                                      checked: Array.isArray(
+                                        _vm.form.is_cat_friendly
+                                      )
+                                        ? _vm._i(
+                                            _vm.form.is_cat_friendly,
+                                            null
+                                          ) > -1
+                                        : _vm.form.is_cat_friendly
+                                    },
+                                    on: {
+                                      change: function($event) {
+                                        var $$a = _vm.form.is_cat_friendly,
+                                          $$el = $event.target,
+                                          $$c = $$el.checked ? true : false
+                                        if (Array.isArray($$a)) {
+                                          var $$v = null,
+                                            $$i = _vm._i($$a, $$v)
+                                          if ($$el.checked) {
+                                            $$i < 0 &&
+                                              (_vm.form.is_cat_friendly = $$a.concat(
+                                                [$$v]
+                                              ))
+                                          } else {
+                                            $$i > -1 &&
+                                              (_vm.form.is_cat_friendly = $$a
+                                                .slice(0, $$i)
+                                                .concat($$a.slice($$i + 1)))
+                                          }
+                                        } else {
+                                          _vm.$set(
+                                            _vm.form,
+                                            "is_cat_friendly",
+                                            $$c
+                                          )
+                                        }
+                                      }
+                                    }
+                                  }),
+                                  _c("br"),
+                                  _vm._v(" "),
+                                  "is_cat_friendly" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.is_cat_friendly[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "is_dog_friendly" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "dog_friendly" } },
+                                    [_vm._v("Hundefreundlich?")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.is_dog_friendly,
+                                        expression: "form.is_dog_friendly"
+                                      }
+                                    ],
+                                    attrs: {
+                                      type: "checkbox",
+                                      name: "dog_friendly",
+                                      id: "dog_friendly"
+                                    },
+                                    domProps: {
+                                      checked: Array.isArray(
+                                        _vm.form.is_dog_friendly
+                                      )
+                                        ? _vm._i(
+                                            _vm.form.is_dog_friendly,
+                                            null
+                                          ) > -1
+                                        : _vm.form.is_dog_friendly
+                                    },
+                                    on: {
+                                      change: function($event) {
+                                        var $$a = _vm.form.is_dog_friendly,
+                                          $$el = $event.target,
+                                          $$c = $$el.checked ? true : false
+                                        if (Array.isArray($$a)) {
+                                          var $$v = null,
+                                            $$i = _vm._i($$a, $$v)
+                                          if ($$el.checked) {
+                                            $$i < 0 &&
+                                              (_vm.form.is_dog_friendly = $$a.concat(
+                                                [$$v]
+                                              ))
+                                          } else {
+                                            $$i > -1 &&
+                                              (_vm.form.is_dog_friendly = $$a
+                                                .slice(0, $$i)
+                                                .concat($$a.slice($$i + 1)))
+                                          }
+                                        } else {
+                                          _vm.$set(
+                                            _vm.form,
+                                            "is_dog_friendly",
+                                            $$c
+                                          )
+                                        }
+                                      }
+                                    }
+                                  }),
+                                  _c("br"),
+                                  _vm._v(" "),
+                                  "is_dog_friendly" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors.is_dog_friendly[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              ),
+                              _vm._v(" "),
+                              _c(
+                                "div",
+                                {
+                                  staticClass: "form-group",
+                                  class: {
+                                    "has-error":
+                                      "is_child_friendly" in _vm.error.errors
+                                  }
+                                },
+                                [
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "child_friendly" } },
+                                    [_vm._v("Kinderfreundlich?")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c("input", {
+                                    directives: [
+                                      {
+                                        name: "model",
+                                        rawName: "v-model",
+                                        value: _vm.form.is_child_friendly,
+                                        expression: "form.is_child_friendly"
+                                      }
+                                    ],
+                                    attrs: {
+                                      type: "checkbox",
+                                      name: "child_friendly",
+                                      id: "child_friendly"
+                                    },
+                                    domProps: {
+                                      checked: Array.isArray(
+                                        _vm.form.is_child_friendly
+                                      )
+                                        ? _vm._i(
+                                            _vm.form.is_child_friendly,
+                                            null
+                                          ) > -1
+                                        : _vm.form.is_child_friendly
+                                    },
+                                    on: {
+                                      change: function($event) {
+                                        var $$a = _vm.form.is_child_friendly,
+                                          $$el = $event.target,
+                                          $$c = $$el.checked ? true : false
+                                        if (Array.isArray($$a)) {
+                                          var $$v = null,
+                                            $$i = _vm._i($$a, $$v)
+                                          if ($$el.checked) {
+                                            $$i < 0 &&
+                                              (_vm.form.is_child_friendly = $$a.concat(
+                                                [$$v]
+                                              ))
+                                          } else {
+                                            $$i > -1 &&
+                                              (_vm.form.is_child_friendly = $$a
+                                                .slice(0, $$i)
+                                                .concat($$a.slice($$i + 1)))
+                                          }
+                                        } else {
+                                          _vm.$set(
+                                            _vm.form,
+                                            "is_child_friendly",
+                                            $$c
+                                          )
+                                        }
+                                      }
+                                    }
+                                  }),
+                                  _c("br"),
+                                  _vm._v(" "),
+                                  "is_child_friendly" in _vm.error.errors
+                                    ? _c("p", {
+                                        staticClass: "text-danger",
+                                        attrs: { role: "alert" },
+                                        domProps: {
+                                          textContent: _vm._s(
+                                            _vm.error.errors
+                                              .is_child_friendly[0]
+                                          )
+                                        }
+                                      })
+                                    : _vm._e()
+                                ]
+                              )
+                            ])
+                          ]
+                        )
+                      ])
+                    ]
+                  ),
+                  _vm._v(" "),
+                  _c(
+                    "button",
+                    {
+                      staticClass: "btn btn-primary pull-right",
+                      attrs: { type: "submit", disabled: _vm.inProgress }
+                    },
+                    [_vm._v("speichern")]
+                  )
+                ]
+              )
+            ])
+          : _vm._e()
+      ])
+    ],
+    1
+  )
+}
+var staticRenderFns = []
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-3038873a", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-1035b9ce", module.exports)
   }
 }
 
 /***/ }),
-/* 513 */
+/* 518 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(514),
-  /* template */
-  __webpack_require__(515),
-  /* styles */
-  null,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(519)
+/* template */
+var __vue_template__ = __webpack_require__(520)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = null
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/Navigation.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] Navigation.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/Navigation.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -64425,10 +66814,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-52509801", Component.options)
+    hotAPI.createRecord("data-v-353fa4ea", Component.options)
   } else {
-    hotAPI.reload("data-v-52509801", Component.options)
-  }
+    hotAPI.reload("data-v-353fa4ea", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -64438,7 +66827,7 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 514 */
+/* 519 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -64486,98 +66875,134 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 515 */
+/* 520 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('nav', {
-    staticClass: "navbar navbar-default"
-  }, [_c('div', {
-    staticClass: "container-fluid"
-  }, [_vm._m(0), _vm._v(" "), _c('div', {
-    staticClass: "collapse navbar-collapse",
-    attrs: {
-      "id": "bs-example-navbar-collapse-1"
-    }
-  }, [_c('ul', {
-    staticClass: "nav navbar-nav"
-  }, [_c('li', {
-    staticClass: "active"
-  }, [_c('router-link', {
-    attrs: {
-      "to": "/cats"
-    }
-  }, [_vm._v("Katzen")])], 1)]), _vm._v(" "), _c('ul', {
-    staticClass: "nav navbar-nav navbar-right"
-  }, [_c('li', [_c('a', {
-    attrs: {
-      "href": "/logout"
-    },
-    on: {
-      "click": function($event) {
-        $event.preventDefault();
-        _vm.logout($event)
-      }
-    }
-  }, [_vm._v("Abmelden")])])])])])])
-},staticRenderFns: [function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "navbar-header"
-  }, [_c('button', {
-    staticClass: "navbar-toggle collapsed",
-    attrs: {
-      "type": "button",
-      "data-toggle": "collapse",
-      "data-target": "#bs-example-navbar-collapse-1",
-      "aria-expanded": "false"
-    }
-  }, [_c('span', {
-    staticClass: "sr-only"
-  }, [_vm._v("Toggle navigation")]), _vm._v(" "), _c('span', {
-    staticClass: "icon-bar"
-  }), _vm._v(" "), _c('span', {
-    staticClass: "icon-bar"
-  }), _vm._v(" "), _c('span', {
-    staticClass: "icon-bar"
-  })]), _vm._v(" "), _c('a', {
-    staticClass: "navbar-brand",
-    attrs: {
-      "href": "#"
-    }
-  }, [_vm._v("KSM")])])
-}]}
-module.exports.render._withStripped = true
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c("nav", { staticClass: "navbar navbar-default" }, [
+    _c("div", { staticClass: "container-fluid" }, [
+      _vm._m(0, false, false),
+      _vm._v(" "),
+      _c(
+        "div",
+        {
+          staticClass: "collapse navbar-collapse",
+          attrs: { id: "bs-example-navbar-collapse-1" }
+        },
+        [
+          _c("ul", { staticClass: "nav navbar-nav" }, [
+            _c(
+              "li",
+              { staticClass: "active" },
+              [
+                _c("router-link", { attrs: { to: "/cats" } }, [
+                  _vm._v("Katzen")
+                ])
+              ],
+              1
+            )
+          ]),
+          _vm._v(" "),
+          _c("ul", { staticClass: "nav navbar-nav navbar-right" }, [
+            _c("li", [
+              _c(
+                "a",
+                {
+                  attrs: { href: "/logout" },
+                  on: {
+                    click: function($event) {
+                      $event.preventDefault()
+                      _vm.logout($event)
+                    }
+                  }
+                },
+                [_vm._v("Abmelden")]
+              )
+            ])
+          ])
+        ]
+      )
+    ])
+  ])
+}
+var staticRenderFns = [
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "navbar-header" }, [
+      _c(
+        "button",
+        {
+          staticClass: "navbar-toggle collapsed",
+          attrs: {
+            type: "button",
+            "data-toggle": "collapse",
+            "data-target": "#bs-example-navbar-collapse-1",
+            "aria-expanded": "false"
+          }
+        },
+        [
+          _c("span", { staticClass: "sr-only" }, [_vm._v("Toggle navigation")]),
+          _vm._v(" "),
+          _c("span", { staticClass: "icon-bar" }),
+          _vm._v(" "),
+          _c("span", { staticClass: "icon-bar" }),
+          _vm._v(" "),
+          _c("span", { staticClass: "icon-bar" })
+        ]
+      ),
+      _vm._v(" "),
+      _c("a", { staticClass: "navbar-brand", attrs: { href: "#" } }, [
+        _vm._v("KSM")
+      ])
+    ])
+  }
+]
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-52509801", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-353fa4ea", module.exports)
   }
 }
 
 /***/ }),
-/* 516 */
+/* 521 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
 function injectStyle (ssrContext) {
   if (disposed) return
-  __webpack_require__(517)
+  __webpack_require__(522)
 }
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(519),
-  /* template */
-  __webpack_require__(523),
-  /* styles */
-  injectStyle,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(524)
+/* template */
+var __vue_template__ = __webpack_require__(528)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = injectStyle
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/Login.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] Login.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/Login.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -64586,10 +67011,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-5d1a01e8", Component.options)
+    hotAPI.createRecord("data-v-3e2ac97c", Component.options)
   } else {
-    hotAPI.reload("data-v-5d1a01e8", Component.options)
-  }
+    hotAPI.reload("data-v-3e2ac97c", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -64599,23 +67024,23 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 517 */
+/* 522 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(518);
+var content = __webpack_require__(523);
 if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
-var update = __webpack_require__(53)("85c3a444", content, false);
+var update = __webpack_require__(54)("205c1e46", content, false);
 // Hot Module Replacement
 if(false) {
  // When the styles change, update the <style> tags
  if(!content.locals) {
-   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-5d1a01e8\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./Login.vue", function() {
-     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-5d1a01e8\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0!./Login.vue");
+   module.hot.accept("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-3e2ac97c\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./Login.vue", function() {
+     var newContent = require("!!../../../../node_modules/css-loader/index.js!../../../../node_modules/vue-loader/lib/style-compiler/index.js?{\"vue\":true,\"id\":\"data-v-3e2ac97c\",\"scoped\":false,\"hasInlineConfig\":true}!../../../../node_modules/vue-loader/lib/selector.js?type=styles&index=0&bustCache!./Login.vue");
      if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
      update(newContent);
    });
@@ -64625,10 +67050,10 @@ if(false) {
 }
 
 /***/ }),
-/* 518 */
+/* 523 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(52)(undefined);
+exports = module.exports = __webpack_require__(53)(undefined);
 // imports
 
 
@@ -64639,12 +67064,12 @@ exports.push([module.i, "\n#login-form-wrapper {\n    margin-top: 1em;\n}\n", ""
 
 
 /***/ }),
-/* 519 */
+/* 524 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__LoginForm__ = __webpack_require__(520);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__LoginForm__ = __webpack_require__(525);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__LoginForm___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__LoginForm__);
 //
 //
@@ -64676,25 +67101,33 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 520 */
+/* 525 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var disposed = false
-var Component = __webpack_require__(31)(
-  /* script */
-  __webpack_require__(521),
-  /* template */
-  __webpack_require__(522),
-  /* styles */
-  null,
-  /* scopeId */
-  null,
-  /* moduleIdentifier (server only) */
-  null
+var normalizeComponent = __webpack_require__(31)
+/* script */
+var __vue_script__ = __webpack_require__(526)
+/* template */
+var __vue_template__ = __webpack_require__(527)
+/* template functional */
+var __vue_template_functional__ = false
+/* styles */
+var __vue_styles__ = null
+/* scopeId */
+var __vue_scopeId__ = null
+/* moduleIdentifier (server only) */
+var __vue_module_identifier__ = null
+var Component = normalizeComponent(
+  __vue_script__,
+  __vue_template__,
+  __vue_template_functional__,
+  __vue_styles__,
+  __vue_scopeId__,
+  __vue_module_identifier__
 )
-Component.options.__file = "/Users/christian/Sites/ksm/resources/assets/js/components/LoginForm.vue"
-if (Component.esModule && Object.keys(Component.esModule).some(function (key) {return key !== "default" && key.substr(0, 2) !== "__"})) {console.error("named exports are not supported in *.vue files.")}
-if (Component.options.functional) {console.error("[vue-loader] LoginForm.vue: functional components are not supported with templates, they should use render functions.")}
+Component.options.__file = "resources/assets/js/components/LoginForm.vue"
+if (Component.esModule && Object.keys(Component.esModule).some(function (key) {  return key !== "default" && key.substr(0, 2) !== "__"})) {  console.error("named exports are not supported in *.vue files.")}
 
 /* hot reload */
 if (false) {(function () {
@@ -64703,10 +67136,10 @@ if (false) {(function () {
   if (!hotAPI.compatible) return
   module.hot.accept()
   if (!module.hot.data) {
-    hotAPI.createRecord("data-v-18be13f0", Component.options)
+    hotAPI.createRecord("data-v-2e00a526", Component.options)
   } else {
-    hotAPI.reload("data-v-18be13f0", Component.options)
-  }
+    hotAPI.reload("data-v-2e00a526", Component.options)
+' + '  }
   module.hot.dispose(function (data) {
     disposed = true
   })
@@ -64716,7 +67149,7 @@ module.exports = Component.exports
 
 
 /***/ }),
-/* 521 */
+/* 526 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -64788,136 +67221,184 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 });
 
 /***/ }),
-/* 522 */
+/* 527 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "container-fluid"
-  }, [_c('div', {
-    staticClass: "row"
-  }, [(_vm.error.length > 0) ? _c('div', {
-    staticClass: "alert alert-danger",
-    attrs: {
-      "role": "alert"
-    },
-    domProps: {
-      "textContent": _vm._s(_vm.error)
-    }
-  }) : _vm._e(), _vm._v(" "), _c('form', {
-    on: {
-      "submit": function($event) {
-        $event.preventDefault();
-        _vm.login($event)
-      }
-    }
-  }, [_c('div', {
-    staticClass: "form-group"
-  }, [_c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.name),
-      expression: "name"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "text",
-      "id": "name",
-      "name": "name",
-      "placeholder": "Benutzername",
-      "disabled": _vm.inProgress,
-      "required": ""
-    },
-    domProps: {
-      "value": (_vm.name)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.name = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('div', {
-    staticClass: "form-group"
-  }, [_c('input', {
-    directives: [{
-      name: "model",
-      rawName: "v-model",
-      value: (_vm.password),
-      expression: "password"
-    }],
-    staticClass: "form-control",
-    attrs: {
-      "type": "password",
-      "id": "password",
-      "placeholder": "Passwort",
-      "disabled": _vm.inProgress,
-      "required": ""
-    },
-    domProps: {
-      "value": (_vm.password)
-    },
-    on: {
-      "input": function($event) {
-        if ($event.target.composing) { return; }
-        _vm.password = $event.target.value
-      }
-    }
-  })]), _vm._v(" "), _c('button', {
-    staticClass: "btn btn-primary",
-    attrs: {
-      "type": "submit",
-      "disabled": !_vm.isFormReady || _vm.inProgress
-    }
-  }, [_vm._v("Anmelden")])])])])
-},staticRenderFns: []}
-module.exports.render._withStripped = true
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c("div", { staticClass: "container-fluid" }, [
+    _c("div", { staticClass: "row" }, [
+      _vm.error.length > 0
+        ? _c("div", {
+            staticClass: "alert alert-danger",
+            attrs: { role: "alert" },
+            domProps: { textContent: _vm._s(_vm.error) }
+          })
+        : _vm._e(),
+      _vm._v(" "),
+      _c(
+        "form",
+        {
+          on: {
+            submit: function($event) {
+              $event.preventDefault()
+              _vm.login($event)
+            }
+          }
+        },
+        [
+          _c("div", { staticClass: "form-group" }, [
+            _c("input", {
+              directives: [
+                {
+                  name: "model",
+                  rawName: "v-model",
+                  value: _vm.name,
+                  expression: "name"
+                }
+              ],
+              staticClass: "form-control",
+              attrs: {
+                type: "text",
+                id: "name",
+                name: "name",
+                placeholder: "Benutzername",
+                disabled: _vm.inProgress,
+                required: ""
+              },
+              domProps: { value: _vm.name },
+              on: {
+                input: function($event) {
+                  if ($event.target.composing) {
+                    return
+                  }
+                  _vm.name = $event.target.value
+                }
+              }
+            })
+          ]),
+          _vm._v(" "),
+          _c("div", { staticClass: "form-group" }, [
+            _c("input", {
+              directives: [
+                {
+                  name: "model",
+                  rawName: "v-model",
+                  value: _vm.password,
+                  expression: "password"
+                }
+              ],
+              staticClass: "form-control",
+              attrs: {
+                type: "password",
+                id: "password",
+                placeholder: "Passwort",
+                disabled: _vm.inProgress,
+                required: ""
+              },
+              domProps: { value: _vm.password },
+              on: {
+                input: function($event) {
+                  if ($event.target.composing) {
+                    return
+                  }
+                  _vm.password = $event.target.value
+                }
+              }
+            })
+          ]),
+          _vm._v(" "),
+          _c(
+            "button",
+            {
+              staticClass: "btn btn-primary",
+              attrs: {
+                type: "submit",
+                disabled: !_vm.isFormReady || _vm.inProgress
+              }
+            },
+            [_vm._v("Anmelden")]
+          )
+        ]
+      )
+    ])
+  ])
+}
+var staticRenderFns = []
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-18be13f0", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-2e00a526", module.exports)
   }
 }
 
 /***/ }),
-/* 523 */
+/* 528 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    attrs: {
-      "id": "login-form-wrapper"
-    }
-  }, [_vm._m(0), _vm._v(" "), _c('div', {
-    staticClass: "panel panel-primary"
-  }, [_vm._m(1), _vm._v(" "), _c('div', {
-    staticClass: "panel-body"
-  }, [_c('login-form', _vm._g({}, _vm.$listeners))], 1)])])
-},staticRenderFns: [function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "jumbotron"
-  }, [_c('h1', [_vm._v("Herzlich Willkommen")]), _vm._v(" "), _c('p', [_vm._v("Die Verwaltungssoftware kann nur von angemeldeten Benutzern verwendet werden.")]), _vm._v(" "), _c('p', [_vm._v("Bitte melden Sie sich an.")])])
-},function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
-  return _c('div', {
-    staticClass: "panel-heading"
-  }, [_c('h3', {
-    staticClass: "panel-title"
-  }, [_vm._v("Anmeldung")])])
-}]}
-module.exports.render._withStripped = true
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c("div", { attrs: { id: "login-form-wrapper" } }, [
+    _vm._m(0, false, false),
+    _vm._v(" "),
+    _c("div", { staticClass: "panel panel-primary" }, [
+      _vm._m(1, false, false),
+      _vm._v(" "),
+      _c(
+        "div",
+        { staticClass: "panel-body" },
+        [_c("login-form", _vm._g({}, _vm.$listeners))],
+        1
+      )
+    ])
+  ])
+}
+var staticRenderFns = [
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "jumbotron" }, [
+      _c("h1", [_vm._v("Herzlich Willkommen")]),
+      _vm._v(" "),
+      _c("p", [
+        _vm._v(
+          "Die Verwaltungssoftware kann nur von angemeldeten Benutzern verwendet werden."
+        )
+      ]),
+      _vm._v(" "),
+      _c("p", [_vm._v("Bitte melden Sie sich an.")])
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "panel-heading" }, [
+      _c("h3", { staticClass: "panel-title" }, [_vm._v("Anmeldung")])
+    ])
+  }
+]
+render._withStripped = true
+module.exports = { render: render, staticRenderFns: staticRenderFns }
 if (false) {
   module.hot.accept()
   if (module.hot.data) {
-     require("vue-hot-reload-api").rerender("data-v-5d1a01e8", module.exports)
+    require("vue-hot-reload-api")      .rerender("data-v-3e2ac97c", module.exports)
   }
 }
 
 /***/ }),
-/* 524 */
+/* 529 */
 /***/ (function(module, exports) {
 
 // removed by extract-text-webpack-plugin
 
 /***/ })
-],[254]);
+],[258]);
