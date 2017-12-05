@@ -60167,7 +60167,6 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
-//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     props: ['cat'],
@@ -60368,7 +60367,13 @@ var render = function() {
                 "router-link",
                 {
                   staticClass: "close rm1",
-                  attrs: { to: { name: "catEdit", params: { id: _vm.cat.id } } }
+                  attrs: {
+                    to: { name: "catEdit", params: { id: _vm.cat.id } },
+                    "aria-label": "Edit",
+                    "data-toggle": "tooltip",
+                    "data-placement": "bottom",
+                    title: "Daten bearbeiten"
+                  }
                 },
                 [
                   _c("span", {
@@ -61991,7 +61996,6 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
                 _this.error = error.response.data;
 
                 var firstError = Object.keys(_this.error.errors)[0];
-                console.log("FirstError:", firstError);
                 $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
 
                 vm.unlockForm();

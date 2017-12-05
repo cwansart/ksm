@@ -11,8 +11,7 @@
                         <span :class="{ 'rotated': showDetails }" class="open-close-btn glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
                     </button>
 
-                    <!-- <a href="" class="close" data-toggle="tooltip" data-placement="bottom" title="Daten bearbeiten"> -->
-                    <router-link :to="{ name: 'catEdit', params: { id: cat.id }}" class="close rm1">
+                    <router-link :to="{ name: 'catEdit', params: { id: cat.id }}" class="close rm1"  aria-label="Edit" data-toggle="tooltip" data-placement="bottom" title="Daten bearbeiten">
                         <span class="open-close-btn glyphicon glyphicon-edit" aria-hidden="true"></span>
                     </router-link>
 
