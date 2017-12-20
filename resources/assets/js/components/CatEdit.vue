@@ -51,20 +51,32 @@
 
                                     <div class="form-group" :class="{ 'has-error': ('date_of_birth' in error.errors) }">
                                         <label for="date_of_birth">Geburtstdatum</label>
-                                        <input type="date" v-model="form.date_of_birth" name="date_of_birth" id="date_of_birth" class="form-control" placeholder="Geburtstdatum" :disabled="inProgress">
+                                        <input type="text" v-model="form.date_of_birth" name="date_of_birth" id="date_of_birth" class="form-control" placeholder="Geburtstdatum" :disabled="inProgress">
                                         <p class="text-danger" role="alert" v-if="('date_of_birth' in error.errors)" v-text="error.errors.date_of_birth[0]"></p>
                                     </div>
 
                                     <div class="radio" :class="{ 'has-error': ('is_male' in error.errors) }">
                                         <label class="radio-inline">
-                                            <input type="radio" name="is_male" v-model="form.is_male" value="1" checked>
+                                            <input type="radio" name="is_male" v-model="form.is_male" value="true" :checked="form.is_male == true">
                                             männlich
                                         </label>
                                         <label class="radio-inline">
-                                            <input type="radio" name="is_male" v-model="form.is_male" value="0" checked>
+                                            <input type="radio" name="is_male" v-model="form.is_male" value="false" :checked="form.is_male == false">
                                             weiblich
                                         </label><br>
                                         <p class="text-danger" role="alert" v-if="('is_male' in error.errors)" v-text="error.errors.is_male[0]"></p>
+                                    </div>
+
+                                    <div class="radio" :class="{ 'has-error': ('is_present' in error.errors) }">
+                                        <label class="radio-inline">
+                                            <input type="radio" name="is_present" v-model="form.is_present" value="true" :checked="form.is_present">
+                                            ist im Heim awesend
+                                        </label>
+                                        <label class="radio-inline">
+                                            <input type="radio" name="is_present" v-model="form.is_present" value="false" :checked="!form.is_present">
+                                            zurzeit nicht im Heim
+                                        </label><br>
+                                        <p class="text-danger" role="alert" v-if="('is_present' in error.errors)" v-text="error.errors.is_present[0]"></p>
                                     </div>
                                 </div>
                             </div>
@@ -185,7 +197,7 @@
                         <div class="panel panel-default">
                             <div class="panel-heading" role="tab">
                                 <a role="button" data-toggle="collapse"  href="#collapseSix">
-                                    Tätowierung
+                                    Tätowierung/Chip
                                 </a>
                             </div>
 
@@ -327,7 +339,8 @@
                     breed: '',
                     color: '',
                     date_of_birth: '',
-                    is_male: 1,
+                    is_male: true,
+                    is_present: true,
 
                     entry_date: '',
                     leave_date: '',
@@ -367,6 +380,7 @@
             axios.get('/cats/' + id)
             .then(response => {
                 this.form = response.data
+                console.log('CAT is_male: ', this.form.is_male)
 
                 if (response.data.photo_path !== null) {
                     this.form.image = window.publicPhotosPath + '/' + response.data.photo_path

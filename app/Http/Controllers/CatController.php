@@ -22,8 +22,10 @@ class CatController extends Controller
      */
     public function index()
     {
-        //return Cat::all();
-        //return response('', 404);
+        switch(request()->filter) {
+            case 'present': return Cat::where('is_present', true)->paginate(); break;
+            case 'deceased': return Cat::where('is_present', true)->paginate(); break;
+        }
         return Cat::paginate();
     }
 
@@ -49,7 +51,7 @@ class CatController extends Controller
             Image::make($imageData)->save(public_path('images/') . $fileName);
             $formData['photo_path'] = $fileName;
         }
-            
+
         $cat = Cat::create($formData);
         return ['message' => trans('messages.cat_saved'), 'cat_id' => $cat->id];
     }

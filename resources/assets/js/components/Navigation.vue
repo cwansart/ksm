@@ -15,7 +15,8 @@
             <!-- Collect the nav links, forms, and other content for toggling -->
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
             <ul class="nav navbar-nav">
-                <li class="active"><router-link to="/cats">Katzen</router-link></li>
+                <router-link active-class="active" tag="li" to="/cats" exact><a>Katzen</a></router-link>
+                <router-link active-class="active" tag="li" to="/cats/present" exact><a>Anwesend</a></router-link>
             </ul>
             
             <ul class="nav navbar-nav navbar-right">

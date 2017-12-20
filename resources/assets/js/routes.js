@@ -4,15 +4,15 @@ let routes = [
     {
         path: '/',
         alias: '/cats',
-        component: require('./components/CatIndex'),
-        query: {
-            page: 1,
-            hightlight: null,
-        }
+        component: require('./components/CatIndex')
     },
     {
         path: '/cats/create',
         component: require('./components/CatCreate')
+    },
+    {
+        path: '/cats/present',
+        component: require('./components/CatPresent')
     },
     {
         name: 'catEdit',

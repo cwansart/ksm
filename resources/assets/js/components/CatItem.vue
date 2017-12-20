@@ -37,7 +37,7 @@
                                 <li :class="{ 'active': activeTab == 'aufenthaltsort' }" @click="setActiveTab('aufenthaltsort')"><a href="#" @click.prevent>Aufenthaltsort</a></li>
                                 <li :class="{ 'active': activeTab == 'kastration' }" @click="setActiveTab('kastration')"><a href="#" @click.prevent>Kastration</a></li>
                                 <li :class="{ 'active': activeTab == 'impfungen' }" @click="setActiveTab('impfungen')"><a href="#" @click.prevent>Impfungen</a></li>
-                                <li :class="{ 'active': activeTab == 'tattoo' }" @click="setActiveTab('tattoo')"><a href="#" @click.prevent>Tätowierung</a></li>
+                                <li :class="{ 'active': activeTab == 'tattoo' }" @click="setActiveTab('tattoo')"><a href="#" @click.prevent>Tätowierung/Chip</a></li>
                                 <li :class="{ 'active': activeTab == 'kommentare-und-merkmale' }" @click="setActiveTab('kommentare-und-merkmale')"><a href="#" @click.prevent>Kommentare und Merkmale</a></li>
                                 <li :class="{ 'active': activeTab == 'todesfall' }" @click="setActiveTab('todesfall')"><a href="#" @click.prevent>Todesfall</a></li>
                                 <li :class="{ 'active': activeTab == 'eigenschaften' }" @click="setActiveTab('eigenschaften')"><a href="#" @click.prevent>Eigenschaften</a></li>
@@ -56,7 +56,7 @@
                                     <cat-detail-row label="Name">{{ cat.name || 'keiner angegeben' }}</cat-detail-row>
                                     <cat-detail-row label="Rasse">{{ cat.breed || 'keine angegeben' }}</cat-detail-row>
                                     <cat-detail-row label="Farbe">{{ cat.color }}</cat-detail-row>
-                                    <cat-detail-row label="Geburtsdatum">{{ moment(cat.date_of_birth).isValid() ? moment(cat.date_of_birth).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
+                                    <cat-detail-row label="Geburtsdatum">{{ cat.date_of_birth || 'keins angegeben' }}</cat-detail-row>
                                     <cat-detail-row label="Geschlecht">{{ cat.is_male ? 'männlich' : 'weiblich' }}</cat-detail-row>
 
                                 </div>
@@ -91,7 +91,7 @@
                                 </div>
 
                                 <div class="tattoo" v-if="activeTab == 'tattoo'" key="6">
-                                    <h2>Tätowierung</h2>
+                                    <h2>Tätowierung/Chip</h2>
 
                                     <cat-detail-row label="Tätowierung links">{{ cat.tattoo_left || 'keins vorhanden' }}</cat-detail-row>
                                     <cat-detail-row label="Tätowierung links">{{ cat.tattoo_right || 'keins vorhanden' }}</cat-detail-row>
@@ -126,6 +126,9 @@
                     </transition>
                 </li>
             </ul>
+        </div>
+        <div class="panel-footer is-present" v-if="this.cat.is_present">
+            Anwesend
         </div>
     </div>
 </template>
@@ -205,6 +208,10 @@
 
     .rm1 {
         margin-right: 0.4em;
+    }
+
+    .is-present {
+        background-color: rgba(68,194,239,0.33);
     }
 </style>
 

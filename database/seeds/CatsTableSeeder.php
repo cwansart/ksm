@@ -15,7 +15,8 @@ class CatsTableSeeder extends Seeder
         Cat::create([
             'color' => 'rot',
             'name' => 'Fritz',
-            'photo_path' => '/../pics/01.jpg'
+            'photo_path' => '/../pics/01.jpg',
+            'is_present' => false
         ]);
 
         Cat::create([
@@ -31,7 +32,8 @@ class CatsTableSeeder extends Seeder
             'color' => 'weiß',
             'name' => 'Mimi',
             'is_male' => false,
-            'photo_path' => '/../pics/04.jpg'
+            'photo_path' => '/../pics/04.jpg',
+            'is_present' => false
         ]);
     }
 }

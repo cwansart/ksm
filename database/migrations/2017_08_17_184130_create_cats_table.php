@@ -20,6 +20,7 @@ class CreateCatsTable extends Migration
             $table->string('color');
             $table->string('date_of_birth')->nullable();
             $table->boolean('is_male')->default(true);
+            $table->boolean('is_present')->default(true);
 
             $table->date('registration_date')->nullable();
             $table->date('leave_date')->nullable();
