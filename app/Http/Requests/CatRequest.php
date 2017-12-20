@@ -25,6 +25,7 @@ class CatRequest extends FormRequest
     {
         return [
             'color' => 'required',
+            'status' => 'required',
 
             'date_of_birth' => 'nullable',
             'registration_date' => 'nullable|date',
@@ -33,14 +34,13 @@ class CatRequest extends FormRequest
             'first_vaccination' => 'nullable|date',
             'second_vaccination' => 'nullable|date',
             'next_vaccination' => 'nullable|date',
-            
+
             'tattoo_left' => 'string|max:5|nullable',
             'tattoo_right' => 'string|max:5|nullable',
 
             'chip' => 'digits:15|nullable',
 
             'is_male' => 'boolean',
-            'is_present' => 'boolean',
             'is_castrated' => 'boolean',
             'deceased' => 'boolean',
             'is_indoor_cat' => 'boolean',

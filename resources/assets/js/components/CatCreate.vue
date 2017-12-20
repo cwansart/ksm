@@ -53,17 +53,21 @@
                                     <p class="text-danger" role="alert" v-if="('is_male' in error.errors)" v-text="error.errors.is_male[0]"></p>
                                 </div>
 
-                                <div class="radio" :class="{ 'has-error': ('is_present' in error.errors) }">
-                                    <label class="radio-inline">
-                                        <input type="radio" name="is_present" v-model="form.is_present" value="1" checked>
-                                        ist im Heim awesend
-                                    </label>
-                                    <label class="radio-inline">
-                                        <input type="radio" name="is_present" v-model="form.is_present" value="0">
-                                        zurzeit nicht im Heim
-                                    </label><br>
-                                    <p class="text-danger" role="alert" v-if="('is_present' in error.errors)" v-text="error.errors.is_present[0]"></p>
+                                <div class="form-group">
+                                    <label for="status">Status</label>
+                                    <select class="form-control" name="status" id="status" v-model="form.status">
+                                        <option value="in_care" :selected="form.status == 'in_care'">Pflegetier</option>
+                                        <option value="deceased" :selected="form.status == 'deceased'">Verstorben</option>
+                                        <option value="mediated" :selected="form.status == 'mediated'">Vermittelt</option>
+                                    </select>
                                 </div>
+
+                                <transition name="component-fade" mode="out-in">
+                                    <div class="form-group" v-if="form.status == 'deceased'">
+                                        <label for="cause_of_death">Todesursache</label>
+                                        <input type="text" v-model="form.cause_of_death" id="cause_of_death" name="cause_of_death" class="form-control" placeholder="Todesursache" :disabled="inProgress">
+                                    </div>
+                                </transition>
                             </div>
                         </div>
                     </div>
@@ -234,31 +238,6 @@
 
                     <div class="panel panel-default">
                         <div class="panel-heading" role="tab">
-                            <a role="button" data-toggle="collapse"  href="#collapseEight">
-                                Todesfall
-                            </a>
-                        </div>
-
-                        <div id="collapseEight" class="panel-collapse collapse" role="tabpanel">
-                            <div class="panel-body">
-                                <div class="form-group" :class="{ 'has-error': ('deceased' in error.errors) }">
-                                    <label for="deceased">Ist die Katze verstorben?</label>
-                                    <input type="checkbox" name="deceased" id="deceased" v-model="form.deceased"><br>
-                                    <p class="text-danger" role="alert" v-if="('deceased' in error.errors)" v-text="error.errors.deceased[0]"></p>
-                                </div>
-
-                                <transition name="component-fade" mode="out-in">
-                                    <div class="form-group" v-if="form.deceased">
-                                        <label for="castration_date">Todesursache</label>
-                                        <input type="date" v-model="form.cause_of_death" name="cause_of_death" class="form-control" placeholder="Kastrationsdatum" :disabled="inProgress">
-                                    </div>
-                                </transition>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="panel panel-default">
-                        <div class="panel-heading" role="tab">
                             <a role="button" data-toggle="collapse"  href="#collapseNine">
                                 Eigenschaften
                             </a>
@@ -323,7 +302,7 @@
                     color: '',
                     date_of_birth: '',
                     is_male: 1,
-                    is_present: 1,
+                    status: 'in_care',
 
                     entry_date: '',
                     leave_date: '',
@@ -346,7 +325,6 @@
                     distinguishing_marks: '',
                     comments: '',
 
-                    deceased: false,
                     cause_of_death: '',
 
                     outdoor: false,

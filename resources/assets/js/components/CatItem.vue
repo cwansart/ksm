@@ -39,7 +39,6 @@
                                 <li :class="{ 'active': activeTab == 'impfungen' }" @click="setActiveTab('impfungen')"><a href="#" @click.prevent>Impfungen</a></li>
                                 <li :class="{ 'active': activeTab == 'tattoo' }" @click="setActiveTab('tattoo')"><a href="#" @click.prevent>Tätowierung/Chip</a></li>
                                 <li :class="{ 'active': activeTab == 'kommentare-und-merkmale' }" @click="setActiveTab('kommentare-und-merkmale')"><a href="#" @click.prevent>Kommentare und Merkmale</a></li>
-                                <li :class="{ 'active': activeTab == 'todesfall' }" @click="setActiveTab('todesfall')"><a href="#" @click.prevent>Todesfall</a></li>
                                 <li :class="{ 'active': activeTab == 'eigenschaften' }" @click="setActiveTab('eigenschaften')"><a href="#" @click.prevent>Eigenschaften</a></li>
                             </ul>
 
@@ -58,6 +57,8 @@
                                     <cat-detail-row label="Farbe">{{ cat.color }}</cat-detail-row>
                                     <cat-detail-row label="Geburtsdatum">{{ cat.date_of_birth || 'keins angegeben' }}</cat-detail-row>
                                     <cat-detail-row label="Geschlecht">{{ cat.is_male ? 'männlich' : 'weiblich' }}</cat-detail-row>
+                                    <cat-detail-row label="Status">{{ humanFriendlyStatus }}</cat-detail-row>
+                                    <cat-detail-row label="Todesursache" v-if="cat.status == 'deceased'">{{ cat.cause_of_death || 'keiner angegeben' }}</cat-detail-row>
 
                                 </div>
 
@@ -105,13 +106,6 @@
                                     <cat-detail-row label="Kommentare">{{ cat.comments || 'keine angegeben' }}</cat-detail-row>
                                 </div>
 
-                                <div class="todesfall" v-if="activeTab == 'todesfall'" key="8">
-                                    <h2>Todesfall</h2>
-
-                                    <cat-detail-row label="Verstorben">{{ cat.deceased ? 'ja' : 'nein' }}</cat-detail-row>
-                                    <cat-detail-row label="Todesursache">{{ cat.cause_of_death || 'keiner angegeben' }}</cat-detail-row>
-                                </div>
-
                                 <div class="eigenschaften" v-if="activeTab == 'eigenschaften'" key="9">
                                     <h2>Eigenschaften</h2>
 
@@ -127,7 +121,7 @@
                 </li>
             </ul>
         </div>
-        <div class="panel-footer is-present" v-if="this.cat.is_present">
+        <div class="panel-footer is-present" v-if="this.cat.status == 'in_care'">
             Anwesend
         </div>
     </div>
@@ -159,6 +153,14 @@
 
             photoSrc() {
                 return this.cat.photo_path !== null ? window.publicPhotosPath + '/' + this.cat.photo_path : null
+            },
+
+            humanFriendlyStatus() {
+                switch (this.cat.status) {
+                    case 'in_care': return 'in Pflege'; break;
+                    case 'deceased': return 'verstorben'; break;
+                    case 'mediated': return 'vermittelt'; break;
+                }
             }
         },
 
@@ -174,10 +176,6 @@
 
             setActiveTab(tab) {
                 this.activeTab = tab
-            },
-
-            editData(data) {
-
             }
         },
 

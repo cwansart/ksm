@@ -15,6 +15,14 @@ let routes = [
         component: require('./components/CatPresent')
     },
     {
+        path: '/cats/deceased',
+        component: require('./components/CatDeceased')
+    },
+    {
+        path: '/cats/mediated',
+        component: require('./components/CatMediated')
+    },
+    {
         name: 'catEdit',
         path: '/cats/:id/edit',
         component: require('./components/CatEdit')

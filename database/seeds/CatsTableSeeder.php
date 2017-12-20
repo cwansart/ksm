@@ -16,16 +16,18 @@ class CatsTableSeeder extends Seeder
             'color' => 'rot',
             'name' => 'Fritz',
             'photo_path' => '/../pics/01.jpg',
-            'is_present' => false
+            'status' => 'in_care'
         ]);
 
         Cat::create([
             'color' => 'schwarz mit weißen Punkten',
+            'status' => 'deceased'
         ]);
 
         Cat::create([
             'color' => 'orange',
             'name' => 'Karl',
+            'status' => 'in_care'
         ]);
 
         Cat::create([
@@ -33,7 +35,7 @@ class CatsTableSeeder extends Seeder
             'name' => 'Mimi',
             'is_male' => false,
             'photo_path' => '/../pics/04.jpg',
-            'is_present' => false
+            'status' => 'mediated'
         ]);
     }
 }

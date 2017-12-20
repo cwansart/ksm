@@ -11,8 +11,8 @@ class Cat extends Model
         'name',
         'color',
         'date_of_birth',
+        'status',
         'is_male',
-        'is_present',
         'registration_date',
         'leave_date',
         'location',
@@ -40,7 +40,6 @@ class Cat extends Model
     ];
 
     protected $casts = [
-        'is_present' => 'boolean',
         'is_male' => 'boolean',
         'is_castrated' => 'boolean',
         'deceased' => 'boolean',

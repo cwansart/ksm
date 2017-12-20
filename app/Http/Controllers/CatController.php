@@ -23,10 +23,11 @@ class CatController extends Controller
     public function index()
     {
         switch(request()->filter) {
-            case 'present': return Cat::where('is_present', true)->paginate(); break;
-            case 'deceased': return Cat::where('is_present', true)->paginate(); break;
+            case 'present': return Cat::where('status', 'in_care')->latest()->paginate(); break;
+            case 'deceased': return Cat::where('status', 'deceased')->latest()->paginate(); break;
+            case 'mediated': return Cat::where('status', 'mediated')->latest()->paginate(); break;
         }
-        return Cat::paginate();
+        return Cat::latest()->paginate();
     }
 
     /**
