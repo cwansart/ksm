@@ -17,6 +17,7 @@
                 <ul class="nav navbar-nav">
                     <router-link active-class="active" tag="li" to="/cats" exact><a>Katzen</a></router-link>
                     <router-link active-class="active" tag="li" to="/cats/present" exact><a>Anwesend</a></router-link>
+                    <router-link active-class="active" tag="li" to="/cats/in_care" exact><a>In Pflege</a></router-link>
                     <router-link active-class="active" tag="li" to="/cats/deceased" exact><a>Verstorben</a></router-link>
                     <router-link active-class="active" tag="li" to="/cats/mediated" exact><a>Vermittelt</a></router-link>
                 </ul>

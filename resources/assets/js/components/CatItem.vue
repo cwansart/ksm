@@ -72,8 +72,7 @@
                                 <div class="aufenthaltsort" v-if="activeTab == 'aufenthaltsort'" key="3">
                                     <h2>Aufenthaltsort</h2>
 
-                                    <cat-detail-row label="Ortsname">{{ cat.location || 'keiner angegeben' }}</cat-detail-row>
-                                    <cat-detail-row label="Straße und Hausnummer">{{ streetAndNr || 'keine angegeben' }}</cat-detail-row>
+                                    <cat-detail-row label="Ortsname">{{ currentLocation }}</cat-detail-row>
                                 </div>
 
                                 <div class="kastration" v-if="activeTab == 'kastration'" key="4">
@@ -144,19 +143,22 @@
         },
 
         computed: {
-            streetAndNr() {
-                let street = this.cat.street || ''
-                let house_number = this.cat.house_number || ''
-                let whitespace = (this.cat.street != null && this.cat.house_number != null) ? ' ' : ''
-                return street + whitespace + house_number
+            photoSrc() {
+                return this.cat.photo_path !== null ? window.publicPhotosPath + '/' + this.cat.photo_path : null;
             },
 
-            photoSrc() {
-                return this.cat.photo_path !== null ? window.publicPhotosPath + '/' + this.cat.photo_path : null
+            currentLocation() {
+                if (this.cat.locations === undefined || this.cat.locations.length === 0) {
+                    return 'keiner eingetragen';
+                } else {
+                    const latestLocation = this.cat.locations[this.cat.locations.length - 1];
+                    return latestLocation.location + ', eingetragen am: ' + moment(latestLocation.updated_at).format(momentDateFormat);
+                }
             },
 
             humanFriendlyStatus() {
                 switch (this.cat.status) {
+                    case 'present': return 'anwesend'; break;
                     case 'in_care': return 'in Pflege'; break;
                     case 'deceased': return 'verstorben'; break;
                     case 'mediated': return 'vermittelt'; break;
@@ -171,11 +173,11 @@
 
         methods: {
             toggle() {
-                this.showDetails = !this.showDetails
+                this.showDetails = !this.showDetails;
             },
 
             setActiveTab(tab) {
-                this.activeTab = tab
+                this.activeTab = tab;
             }
         },
 
@@ -183,9 +185,9 @@
             // enables the tooltip (boostrap)
             $(function () {
                 $('[data-toggle="tooltip"]').tooltip()
-            })
+            });
 
-            this.highlight = this.$route.query.highlight == this.cat.id
+            this.highlight = this.$route.query.highlight == this.cat.id;
         }
     }
 </script>

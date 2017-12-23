@@ -27,7 +27,7 @@ class CatsTableSeeder extends Seeder
         Cat::create([
             'color' => 'orange',
             'name' => 'Karl',
-            'status' => 'in_care'
+            'status' => 'present'
         ]);
 
         Cat::create([

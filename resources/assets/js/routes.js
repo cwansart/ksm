@@ -23,6 +23,10 @@ let routes = [
         component: require('./components/CatMediated')
     },
     {
+        path: '/cats/in_care',
+        component: require('./components/CatInCare')
+    },
+    {
         name: 'catEdit',
         path: '/cats/:id/edit',
         component: require('./components/CatEdit')

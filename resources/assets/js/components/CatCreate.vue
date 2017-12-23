@@ -56,6 +56,7 @@
                                 <div class="form-group">
                                     <label for="status">Status</label>
                                     <select class="form-control" name="status" id="status" v-model="form.status">
+                                        <option value="present" :selected="form.status == 'present'">Anwesend</option>
                                         <option value="in_care" :selected="form.status == 'in_care'">Pflegetier</option>
                                         <option value="deceased" :selected="form.status == 'deceased'">Verstorben</option>
                                         <option value="mediated" :selected="form.status == 'mediated'">Vermittelt</option>
@@ -105,24 +106,16 @@
 
                         <div id="collapseThree" class="panel-collapse collapse" role="tabpanel">
                             <div class="panel-body">
-                                <div class="form-group">
-                                    <label for="location">Ortsname</label>
-                                    <input type="text" v-model="form.location" name="location" id="location" class="form-control" placeholder="Ort, z. B. Fam. Müller" :disabled="inProgress">
-                                </div>
+                                <transition name="component-fade" mode="out-in">
+                                    <div class="alert alert-warning" role="alert" v-if="showLocationError">
+                                        Es kann kein neuer Ort hinzugefügt werden, wenn der letzte nicht eingetragen wurde.
+                                    </div>
+                                </transition>
 
-                                <div class="form-group">
-                                    <label for="street">Straße und Hausnummer</label>
-                                    <input type="text" v-model="form.street" name="street" id="street" class="form-control" placeholder="z. B. Musterstr. 42" :disabled="inProgress">
-                                </div>
+                                <button type="button" @click="addLocation" class="btn btn-default">Ort hinzufügen</button>
 
-                                <div class="form-group">
-                                    <label for="city">PLZ und Ort</label>
-                                    <input type="text" v-model="form.city" name="city" id="city" class="form-control" placeholder="z. B. 49074 Osnabrück" :disabled="inProgress">
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="country">Land</label>
-                                    <input type="text" v-model="form.country" name="country" id="country" class="form-control" placeholder="z. B. Deutschland" :disabled="inProgress">
+                                <div class="form-group pad-top" v-for="(location, index) in form.locations">
+                                    <textarea class="form-control" rows="3" :name="locationName(index)" v-model="form.locations[index]" :disabled="inProgress" placeholder="Aufenthaltsort, z. B. Katzenschutzbund"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -290,6 +283,7 @@
         data() {
             return {
                 error: { errors: {}, message: undefined },
+                showLocationError: false,
                 inProgress: false,
 
                 // default image when nothing was uploaded
@@ -302,14 +296,12 @@
                     color: '',
                     date_of_birth: '',
                     is_male: 1,
-                    status: 'in_care',
+                    status: 'present',
 
                     entry_date: '',
                     leave_date: '',
 
-                    location: '',
-                    street: '',
-                    country: '',
+                    locations: [],
 
                     is_castrated: false,
                     castration_date: '',
@@ -339,69 +331,87 @@
 
         methods: {
             store() {
-                this.inProgress = true
-                this.storeCat()
+                this.inProgress = true;
+                this.storeCat();
                 //this.storePhoto()
             },
 
             storeCat() {
-                let vm = this
-                let cat = this.form
+                let vm = this;
+                let cat = this.form;
 
                 // Delete default image if not changed from data
                 if (!this.imageChanged) {
-                    delete cat.image
+                    delete cat.image;
                 }
 
                 axios.post('/cats', this.form)
                 .then(response => {
-                    console.log('onMessage: ', response.data)
-                    vm.$router.app.$emit('onMessage', response.data.message)
-                    this.$router.push({ path: '/cats', query: { highlight: response.data.cat_id }})
+                    console.log('onMessage: ', response.data);
+                    vm.$router.app.$emit('onMessage', response.data.message);
+                    this.$router.push({ path: '/cats', query: { highlight: response.data.cat_id }});
                 })
                 .catch(error => {
-                    this.error = error.response.data
+                    this.error = error.response.data;
 
-                    let firstError = Object.keys(this.error.errors)[0]
+                    let firstError = Object.keys(this.error.errors)[0];
                     $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
 
-                    vm.unlockForm()
-                })
+                    vm.unlockForm();
+                });
             },
 
             onFileChange(event) {
-                this.imageChanged = true
-                let files = event.target.files || event.dataTransfer.files
+                this.imageChanged = true;
+                let files = event.target.files || event.dataTransfer.files;
                 if (!files.length) {
-                    return
+                    return;
                 }
-                this.createPhoto(files[0])
+                this.createPhoto(files[0]);
             },
 
             createPhoto(file) {
-                let reader = new FileReader()
-                let vm = this
+                let reader = new FileReader();
+                let vm = this;
 
                 reader.onload = e => {
-                    vm.form.image = e.target.result
-                }
-                reader.readAsDataURL(file)
+                    vm.form.image = e.target.result;
+                };
+                reader.readAsDataURL(file);
             },
 
             unlockForm() {
-                let vm = this
+                let vm = this;
                 window.setTimeout(_ => {
-                    vm.inProgress = false
-                }, 1000)
+                    vm.inProgress = false;
+                }, 1000);
+            },
+
+            addLocation() {
+                let locations = this.form.locations;
+                if (locations.length === 0 || locations[locations.length - 1].trim().length > 0) {
+                    locations.push('');
+                    this.showLocationError = false;
+                } else {
+                    this.showLocationError = true;
+                }
+            },
+
+            locationName(index) {
+                return 'location-' + index;
             }
         }
     }
 </script>
 
 <<style>
-#cat-photo {
-    max-width: 15em;
-    max-height: 15em;
-}
+    #cat-photo {
+        max-width: 15em;
+        max-height: 15em;
+    }
+
+    .pad-top {
+        margin-top: 1em;
+    }
 </style>
 

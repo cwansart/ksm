@@ -70,6 +70,7 @@
                                     <div class="form-group">
                                         <label for="status">Status</label>
                                         <select class="form-control" name="status" id="status" v-model="form.status">
+                                            <option value="present" :selected="form.status == 'present'">Anwesend</option>
                                             <option value="in_care" :selected="form.status == 'in_care'">Pflegetier</option>
                                             <option value="deceased" :selected="form.status == 'deceased'">Verstorben</option>
                                             <option value="mediated" :selected="form.status == 'mediated'">Vermittelt</option>
@@ -79,7 +80,7 @@
                                     <transition name="component-fade" mode="out-in">
                                         <div class="form-group" v-if="form.status == 'deceased'">
                                             <label for="cause_of_death">Todesursache</label>
-                                            <input type="text" v-model="form.cause_of_death" name="cause_of_death" class="form-control" placeholder="Todesursache" :disabled="inProgress">
+                                            <input type="text" v-model="form.cause_of_death" id="cause_of_death" name="cause_of_death" class="form-control" placeholder="Todesursache" :disabled="inProgress">
                                         </div>
                                     </transition>
                                 </div>
@@ -119,24 +120,16 @@
 
                             <div id="collapseThree" class="panel-collapse collapse" role="tabpanel">
                                 <div class="panel-body">
-                                    <div class="form-group">
-                                        <label for="location">Ortsname</label>
-                                        <input type="text" v-model="form.location" name="location" id="location" class="form-control" placeholder="Ort, z. B. Fam. Müller" :disabled="inProgress">
-                                    </div>
+                                    <transition name="component-fade" mode="out-in">
+                                        <div class="alert alert-warning" role="alert" v-if="showLocationError">
+                                            Es kann kein neuer Ort hinzugefügt werden, wenn der letzte nicht eingetragen wurde.
+                                        </div>
+                                    </transition>
 
-                                    <div class="form-group">
-                                        <label for="street">Straße und Hausnummer</label>
-                                        <input type="text" v-model="form.street" name="street" id="street" class="form-control" placeholder="z. B. Musterstr. 42" :disabled="inProgress">
-                                    </div>
+                                    <button type="button" @click="addLocation" class="btn btn-default">Ort hinzufügen</button>
 
-                                    <div class="form-group">
-                                        <label for="city">PLZ und Ort</label>
-                                        <input type="text" v-model="form.city" name="city" id="city" class="form-control" placeholder="z. B. 49074 Osnabrück" :disabled="inProgress">
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="country">Land</label>
-                                        <input type="text" v-model="form.country" name="country" id="country" class="form-control" placeholder="z. B. Deutschland" :disabled="inProgress">
+                                    <div class="form-group pad-top" v-for="(location, index) in form.locations">
+                                        <textarea class="form-control" rows="3" :name="locationName(index)" v-model="form.locations[index]" :disabled="inProgress" placeholder="Aufenthaltsort, z. B. Katzenschutzbund"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -305,6 +298,7 @@
         data() {
             return {
                 error: { errors: {}, message: undefined },
+                showLocationError: false,
                 inProgress: false,
                 loading: true,
                 loadingError: null,
@@ -318,15 +312,13 @@
                     breed: '',
                     color: '',
                     date_of_birth: '',
-                    is_male: true,
-                    is_present: true,
+                    is_male: 1,
+                    status: 'present',
 
                     entry_date: '',
                     leave_date: '',
 
-                    location: '',
-                    street: '',
-                    country: '',
+                    locations: [],
 
                     is_castrated: false,
                     castration_date: '',
@@ -342,103 +334,122 @@
                     distinguishing_marks: '',
                     comments: '',
 
-                    deceased: false,
                     cause_of_death: '',
 
                     outdoor: false,
                     indoor: false,
                     cat_friendly: false,
                     dog_friendly: false,
-                    child_friendly: false
+                    child_friendly: false,
+                    image: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg=='
                 }
             }
         },
 
         created() {
-            let id = parseInt(this.$route.params.id || '1')
+            let id = parseInt(this.$route.params.id || '1');
             axios.get('/cats/' + id)
             .then(response => {
-                this.form = response.data
-                console.log('CAT is_male: ', this.form.is_male)
+                response.data.locations = [];
+                this.form = response.data;
+                this.id = this.form.id;
 
                 if (response.data.photo_path !== null) {
-                    this.form.image = window.publicPhotosPath + '/' + response.data.photo_path
-                    delete this.form.photo_path
+                    this.form.image = window.publicPhotosPath + '/' + response.data.photo_path;
+                    delete this.form.photo_path;
                 } else {
-                    this.form.image = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg=='
+                    this.form.image = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg==';
                 }
-                this.loading = false
+                this.loading = false;
             })
             .catch(error => {
-                this.loadingError = 'Beim Laden der Daten ist ein Fehler aufgetreten. Möglicherweise existiert der gewünschte Eintrag nicht mehr.'
-                console.error('Error while loading data:', error)
+                this.loadingError = 'Beim Laden der Daten ist ein Fehler aufgetreten. Möglicherweise existiert der gewünschte Eintrag nicht mehr.';
+                console.error('Error while loading data:', error);
             })
         },
 
         methods: {
             store() {
-                this.inProgress = true
-                this.updateCat()
+                this.inProgress = true;
+                this.updateCat();
             },
 
             updateCat() {
-                let vm = this
-                let cat = this.form
+                let vm = this;
+                let cat = this.form;
 
                 // Delete default image if not changed from data
                 if (!this.imageChanged) {
-                    delete cat.image
+                    delete cat.image;
                 }
 
                 axios.put('/cats/' + this.id, this.form)
                 .then(response => {
-                    console.log('onMessage: ', response.data)
-                    vm.$router.app.$emit('onMessage', response.data.message)
-                    this.$router.push({ path: '/cats', query: { highlight: response.data.cat_id }})
+                    console.log('onMessage: ', response.data);
+                    vm.$router.app.$emit('onMessage', response.data.message);
+                    this.$router.push({ path: '/cats', query: { highlight: response.data.cat_id }});
                 })
                 .catch(error => {
-                    this.error = error.response.data
+                    this.error = error.response.data;
 
-                    let firstError = Object.keys(this.error.errors)[0]
+                    let firstError = Object.keys(this.error.errors)[0];
                     $("html, body").animate({ scrollTop: $('[name=' + firstError).offset().top }, 500);
 
-                    vm.unlockForm()
-                })
+                    vm.unlockForm();
+                });
             },
 
             onFileChange(event) {
-                this.imageChanged = true
-                let files = event.target.files || event.dataTransfer.files
+                this.imageChanged = true;
+                let files = event.target.files || event.dataTransfer.files;
                 if (!files.length) {
-                    return
+                    return;
                 }
-                this.createPhoto(files[0])
+                this.createPhoto(files[0]);
             },
 
             createPhoto(file) {
-                let reader = new FileReader()
-                let vm = this
+                let reader = new FileReader();
+                let vm = this;
 
                 reader.onload = e => {
-                    vm.form.image = e.target.result
-                }
-                reader.readAsDataURL(file)
+                    vm.form.image = e.target.result;
+                };
+                reader.readAsDataURL(file);
             },
 
             unlockForm() {
-                let vm = this
+                let vm = this;
                 window.setTimeout(_ => {
-                    vm.inProgress = false
-                }, 1000)
+                    vm.inProgress = false;
+                }, 1000);
+            },
+
+            addLocation() {
+                let locations = this.form.locations;
+                if (locations.length === 0 || locations[locations.length - 1].trim().length > 0) {
+                    locations.push('');
+                    this.showLocationError = false;
+                } else {
+                    this.showLocationError = true;
+                }
+            },
+
+            locationName(index) {
+                return 'location-' + index;
             }
         }
     }
 </script>
 
 <<style>
-#cat-photo {
-    max-width: 15em;
-    max-height: 15em;
-}
+    #cat-photo {
+        max-width: 15em;
+        max-height: 15em;
+    }
+
+    .pad-top {
+        margin-top: 1em;
+    }
 </style>
 

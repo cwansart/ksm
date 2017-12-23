@@ -25,11 +25,6 @@ class CreateCatsTable extends Migration
             $table->date('registration_date')->nullable();
             $table->date('leave_date')->nullable();
 
-            $table->string('location')->nullable();
-            $table->string('street')->nullable();
-            $table->string('city')->nullable();
-            $table->string('country')->nullable();
-
             $table->boolean('is_castrated')->default(false);
             $table->date('castration_date')->nullable();
 

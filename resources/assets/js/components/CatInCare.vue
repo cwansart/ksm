@@ -44,8 +44,8 @@
         },
 
         mounted() {
-            const page = this.$route.query.page || 1;
-            this.loadData(page);
+            const page = this.$route.query.page || 1
+            this.loadData(page)
         },
 
         components: {
@@ -59,26 +59,26 @@
 
         methods: {
             loadData(page) {
-                axios.get('/cats?page=' + page)
+                axios.get('/cats?filter=in_care&page=' + page)
                 .then(response => {
-                    this.cats = response.data.data;
-                    this.inProgress = false;
-                    this.response = response.data;
+                    this.cats = response.data.data
+                    this.inProgress = false
+                    this.response = response.data
                 })
                 .catch(error => {
-                    console.error('An error occured while fecthing data. ', error);
-                    this.error = error.message;
+                    console.error('An error occured while fecthing data. ', error)
+                    this.error = error.message
                 })
             },
 
             queryChanged(query) {
                 if (query.page !== undefined) {
-                    this.pageChanged(query.page);
+                    this.pageChanged(query.page)
                 }
             },
 
             pageChanged(page) {
-                this.loadData(page);
+                this.loadData(page)
                 $("html, body").animate({ scrollTop: 0 }, 500);
             }
         }

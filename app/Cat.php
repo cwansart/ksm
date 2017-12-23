@@ -6,6 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Cat extends Model
 {
+    protected $dates = [
+        'created_at',
+        'updated_at'
+    ];
+
     protected $fillable = [
         'breed',
         'name',
@@ -49,4 +54,9 @@ class Cat extends Model
         'is_dog_friendly' => 'boolean',
         'is_child_friendly' => 'boolean'
     ];
+
+    public function locations()
+    {
+        return $this->hasMany('App\Location');
+    }
 }
