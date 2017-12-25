@@ -34,7 +34,7 @@ class CreateCatsTable extends Migration
 
             $table->string('tattoo_left', 5)->nullable();
             $table->string('tattoo_right', 5)->nullable();
-            $table->integer('chip')->nullable();
+            $table->string('chip', 20)->nullable();
 
             $table->text('distinguishing_marks')->nullable();
             $table->text('comments')->nullable();
