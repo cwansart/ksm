@@ -253,32 +253,32 @@
                             <div id="collapseNine" class="panel-collapse collapse" role="tabpanel">
                                 <div class="panel-body">
                                     <div class="form-group" :class="{ 'has-error': ('is_outdoor_cat' in error.errors) }">
-                                        <label for="outdoor">Außenkatze?</label>
-                                        <input type="checkbox" name="outdoor" id="outdoor" v-model="form.is_outdoor_cat"><br>
+                                        <label for="is_outdoor_cat">Außenkatze?</label>
+                                        <input type="checkbox" name="is_outdoor_cat" id="is_outdoor_cat" v-model="form.is_outdoor_cat"><br>
                                         <p class="text-danger" role="alert" v-if="('is_outdoor_cat' in error.errors)" v-text="error.errors.is_outdoor_cat[0]"></p>
                                     </div>
 
                                     <div class="form-group" :class="{ 'has-error': ('is_indoor_cat' in error.errors) }">
-                                        <label for="indoor">Innenkatze?</label>
-                                        <input type="checkbox" name="indoor" id="indoor" v-model="form.is_indoor_cat"><br>
+                                        <label for="is_indoor_cat">Innenkatze?</label>
+                                        <input type="checkbox" name="is_indoor_cat" id="is_indoor_cat" v-model="form.is_indoor_cat"><br>
                                         <p class="text-danger" role="alert" v-if="('is_indoor_cat' in error.errors)" v-text="error.errors.is_indoor_cat[0]"></p>
                                     </div>
 
                                     <div class="form-group" :class="{ 'has-error': ('is_cat_friendly' in error.errors) }">
-                                        <label for="cat_friendly">Katzenfreundlich?</label>
-                                        <input type="checkbox" name="cat_friendly" id="cat_friendly" v-model="form.is_cat_friendly"><br>
+                                        <label for="is_cat_friendly">Katzenfreundlich?</label>
+                                        <input type="checkbox" name="is_cat_friendly" id="is_cat_friendly" v-model="form.is_cat_friendly"><br>
                                         <p class="text-danger" role="alert" v-if="('is_cat_friendly' in error.errors)" v-text="error.errors.is_cat_friendly[0]"></p>
                                     </div>
 
                                     <div class="form-group" :class="{ 'has-error': ('is_dog_friendly' in error.errors) }">
-                                        <label for="dog_friendly">Hundefreundlich?</label>
-                                        <input type="checkbox" name="dog_friendly" id="dog_friendly" v-model="form.is_dog_friendly"><br>
+                                        <label for="is_dog_friendly">Hundefreundlich?</label>
+                                        <input type="checkbox" name="is_dog_friendly" id="is_dog_friendly" v-model="form.is_dog_friendly"><br>
                                         <p class="text-danger" role="alert" v-if="('is_dog_friendly' in error.errors)" v-text="error.errors.is_dog_friendly[0]"></p>
                                     </div>
 
                                     <div class="form-group" :class="{ 'has-error': ('is_child_friendly' in error.errors) }">
-                                        <label for="child_friendly">Kinderfreundlich?</label>
-                                        <input type="checkbox" name="child_friendly" id="child_friendly" v-model="form.is_child_friendly"><br>
+                                        <label for="is_child_friendly">Kinderfreundlich?</label>
+                                        <input type="checkbox" name="is_child_friendly" id="is_child_friendly" v-model="form.is_child_friendly"><br>
                                         <p class="text-danger" role="alert" v-if="('is_child_friendly' in error.errors)" v-text="error.errors.is_child_friendly[0]"></p>
                                     </div>
                                 </div>
@@ -336,11 +336,11 @@
 
                     cause_of_death: '',
 
-                    outdoor: false,
-                    indoor: false,
-                    cat_friendly: false,
-                    dog_friendly: false,
-                    child_friendly: false,
+                    is_outdoor_cat: false,
+                    is_indoor_cat: false,
+                    is_cat_friendly: false,
+                    is_dog_friendly: false,
+                    is_child_friendly: false,
                     image: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg=='
                 }
             }

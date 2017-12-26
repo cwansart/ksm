@@ -61903,11 +61903,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
                 cause_of_death: '',
 
-                outdoor: false,
-                indoor: false,
-                cat_friendly: false,
-                dog_friendly: false,
-                child_friendly: false,
+                is_outdoor_cat: false,
+                is_indoor_cat: false,
+                is_cat_friendly: false,
+                is_dog_friendly: false,
+                is_child_friendly: false,
                 image: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg=='
             }
         };
@@ -63344,7 +63344,7 @@ var render = function() {
                           }
                         },
                         [
-                          _c("label", { attrs: { for: "outdoor" } }, [
+                          _c("label", { attrs: { for: "is_outdoor_cat" } }, [
                             _vm._v("Außenkatze?")
                           ]),
                           _vm._v(" "),
@@ -63359,8 +63359,8 @@ var render = function() {
                             ],
                             attrs: {
                               type: "checkbox",
-                              name: "outdoor",
-                              id: "outdoor"
+                              name: "is_outdoor_cat",
+                              id: "is_outdoor_cat"
                             },
                             domProps: {
                               checked: Array.isArray(_vm.form.is_outdoor_cat)
@@ -63417,7 +63417,7 @@ var render = function() {
                           }
                         },
                         [
-                          _c("label", { attrs: { for: "indoor" } }, [
+                          _c("label", { attrs: { for: "is_indoor_cat" } }, [
                             _vm._v("Innenkatze?")
                           ]),
                           _vm._v(" "),
@@ -63432,8 +63432,8 @@ var render = function() {
                             ],
                             attrs: {
                               type: "checkbox",
-                              name: "indoor",
-                              id: "indoor"
+                              name: "is_indoor_cat",
+                              id: "is_indoor_cat"
                             },
                             domProps: {
                               checked: Array.isArray(_vm.form.is_indoor_cat)
@@ -65450,11 +65450,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
                 cause_of_death: '',
 
-                outdoor: false,
-                indoor: false,
-                cat_friendly: false,
-                dog_friendly: false,
-                child_friendly: false,
+                is_outdoor_cat: false,
+                is_indoor_cat: false,
+                is_cat_friendly: false,
+                is_dog_friendly: false,
+                is_child_friendly: false,
                 image: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg=='
             }
         };
@@ -67262,9 +67262,11 @@ var render = function() {
                                   }
                                 },
                                 [
-                                  _c("label", { attrs: { for: "outdoor" } }, [
-                                    _vm._v("Außenkatze?")
-                                  ]),
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "is_outdoor_cat" } },
+                                    [_vm._v("Außenkatze?")]
+                                  ),
                                   _vm._v(" "),
                                   _c("input", {
                                     directives: [
@@ -67277,8 +67279,8 @@ var render = function() {
                                     ],
                                     attrs: {
                                       type: "checkbox",
-                                      name: "outdoor",
-                                      id: "outdoor"
+                                      name: "is_outdoor_cat",
+                                      id: "is_outdoor_cat"
                                     },
                                     domProps: {
                                       checked: Array.isArray(
@@ -67345,9 +67347,11 @@ var render = function() {
                                   }
                                 },
                                 [
-                                  _c("label", { attrs: { for: "indoor" } }, [
-                                    _vm._v("Innenkatze?")
-                                  ]),
+                                  _c(
+                                    "label",
+                                    { attrs: { for: "is_indoor_cat" } },
+                                    [_vm._v("Innenkatze?")]
+                                  ),
                                   _vm._v(" "),
                                   _c("input", {
                                     directives: [
@@ -67360,8 +67364,8 @@ var render = function() {
                                     ],
                                     attrs: {
                                       type: "checkbox",
-                                      name: "indoor",
-                                      id: "indoor"
+                                      name: "is_indoor_cat",
+                                      id: "is_indoor_cat"
                                     },
                                     domProps: {
                                       checked: Array.isArray(
@@ -67428,7 +67432,7 @@ var render = function() {
                                 [
                                   _c(
                                     "label",
-                                    { attrs: { for: "cat_friendly" } },
+                                    { attrs: { for: "is_cat_friendly" } },
                                     [_vm._v("Katzenfreundlich?")]
                                   ),
                                   _vm._v(" "),
@@ -67443,8 +67447,8 @@ var render = function() {
                                     ],
                                     attrs: {
                                       type: "checkbox",
-                                      name: "cat_friendly",
-                                      id: "cat_friendly"
+                                      name: "is_cat_friendly",
+                                      id: "is_cat_friendly"
                                     },
                                     domProps: {
                                       checked: Array.isArray(
@@ -67513,7 +67517,7 @@ var render = function() {
                                 [
                                   _c(
                                     "label",
-                                    { attrs: { for: "dog_friendly" } },
+                                    { attrs: { for: "is_dog_friendly" } },
                                     [_vm._v("Hundefreundlich?")]
                                   ),
                                   _vm._v(" "),
@@ -67528,8 +67532,8 @@ var render = function() {
                                     ],
                                     attrs: {
                                       type: "checkbox",
-                                      name: "dog_friendly",
-                                      id: "dog_friendly"
+                                      name: "is_dog_friendly",
+                                      id: "is_dog_friendly"
                                     },
                                     domProps: {
                                       checked: Array.isArray(
@@ -67598,7 +67602,7 @@ var render = function() {
                                 [
                                   _c(
                                     "label",
-                                    { attrs: { for: "child_friendly" } },
+                                    { attrs: { for: "is_child_friendly" } },
                                     [_vm._v("Kinderfreundlich?")]
                                   ),
                                   _vm._v(" "),
@@ -67613,8 +67617,8 @@ var render = function() {
                                     ],
                                     attrs: {
                                       type: "checkbox",
-                                      name: "child_friendly",
-                                      id: "child_friendly"
+                                      name: "is_child_friendly",
+                                      id: "is_child_friendly"
                                     },
                                     domProps: {
                                       checked: Array.isArray(
