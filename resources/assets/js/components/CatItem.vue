@@ -70,9 +70,11 @@
                                 </div>
 
                                 <div class="aufenthaltsort" v-if="activeTab == 'aufenthaltsort'" key="3">
-                                    <h2>Aufenthaltsort</h2>
+                                    <h2>Aufenthaltsorte</h2>
 
-                                    <cat-detail-row label="Ortsname">{{ currentLocation }}</cat-detail-row>
+                                    <template v-for="location in cat.locations">
+                                        <cat-location-row :date="updatedAt(location.updated_at)" :location="location.location"></cat-location-row>
+                                    </template>
                                 </div>
 
                                 <div class="kastration" v-if="activeTab == 'kastration'" key="4">
@@ -147,28 +149,29 @@
                 return this.cat.photo_path !== null ? window.publicPhotosPath + '/' + this.cat.photo_path : null;
             },
 
-            currentLocation() {
-                if (this.cat.locations === undefined || this.cat.locations.length === 0) {
-                    return 'keiner eingetragen';
-                } else {
-                    const latestLocation = this.cat.locations[this.cat.locations.length - 1];
-                    return latestLocation.location + ', eingetragen am: ' + moment(latestLocation.updated_at).format(momentDateFormat);
-                }
-            },
-
             humanFriendlyStatus() {
                 switch (this.cat.status) {
-                    case 'present': return 'anwesend'; break;
-                    case 'in_care': return 'in Pflege'; break;
-                    case 'deceased': return 'verstorben'; break;
-                    case 'mediated': return 'vermittelt'; break;
+                    case 'present': return 'anwesend';
+                    case 'in_care': return 'in Pflege';
+                    case 'deceased': return 'verstorben';
+                    case 'mediated': return 'vermittelt';
                 }
             }
         },
 
         components: {
             'cat-detail-row': require('./CatDetailRow'),
-            'cat-detail-tab': { template: '<div><slot></slot></div>' }
+            'cat-detail-tab': { template: '<div><slot></slot></div>' },
+            'cat-location-row': {
+                props: [ 'location', 'date' ],
+                template: `
+                    <div class="panel panel-default">
+                      <div class="panel-body">
+                        {{ location }}
+                      </div>
+                      <div class="panel-footer">{{ date }}</div>
+                    </div>`
+            }
         },
 
         methods: {
@@ -178,6 +181,10 @@
 
             setActiveTab(tab) {
                 this.activeTab = tab;
+            },
+
+            updatedAt(date) {
+                return 'eingetragen am: ' + moment(date).format(momentDateFormat);
             }
         },
 

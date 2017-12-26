@@ -383,6 +383,8 @@
                     delete cat.image;
                 }
 
+                cat.locations = cat.locations.filter(function(item) { return item.length > 0; });
+
                 axios.put('/cats/' + this.id, this.form)
                 .then(response => {
                     console.log('onMessage: ', response.data);

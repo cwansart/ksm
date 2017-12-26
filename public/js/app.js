@@ -60218,6 +60218,8 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     props: ['cat'],
@@ -60236,31 +60238,27 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
         photoSrc: function photoSrc() {
             return this.cat.photo_path !== null ? window.publicPhotosPath + '/' + this.cat.photo_path : null;
         },
-        currentLocation: function currentLocation() {
-            if (this.cat.locations === undefined || this.cat.locations.length === 0) {
-                return 'keiner eingetragen';
-            } else {
-                var latestLocation = this.cat.locations[this.cat.locations.length - 1];
-                return latestLocation.location + ', eingetragen am: ' + moment(latestLocation.updated_at).format(momentDateFormat);
-            }
-        },
         humanFriendlyStatus: function humanFriendlyStatus() {
             switch (this.cat.status) {
                 case 'present':
-                    return 'anwesend';break;
+                    return 'anwesend';
                 case 'in_care':
-                    return 'in Pflege';break;
+                    return 'in Pflege';
                 case 'deceased':
-                    return 'verstorben';break;
+                    return 'verstorben';
                 case 'mediated':
-                    return 'vermittelt';break;
+                    return 'vermittelt';
             }
         }
     },
 
     components: {
         'cat-detail-row': __webpack_require__(501),
-        'cat-detail-tab': { template: '<div><slot></slot></div>' }
+        'cat-detail-tab': { template: '<div><slot></slot></div>' },
+        'cat-location-row': {
+            props: ['location', 'date'],
+            template: '\n                <div class="panel panel-default">\n                  <div class="panel-body">\n                    {{ location }}\n                  </div>\n                  <div class="panel-footer">{{ date }}</div>\n                </div>'
+        }
     },
 
     methods: {
@@ -60269,6 +60267,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
         },
         setActiveTab: function setActiveTab(tab) {
             this.activeTab = tab;
+        },
+        updatedAt: function updatedAt(date) {
+            return 'eingetragen am: ' + moment(date).format(momentDateFormat);
         }
     },
 
@@ -60902,15 +60903,24 @@ var render = function() {
                                     "div",
                                     { key: "3", staticClass: "aufenthaltsort" },
                                     [
-                                      _c("h2", [_vm._v("Aufenthaltsort")]),
+                                      _c("h2", [_vm._v("Aufenthaltsorte")]),
                                       _vm._v(" "),
-                                      _c(
-                                        "cat-detail-row",
-                                        { attrs: { label: "Ortsname" } },
-                                        [_vm._v(_vm._s(_vm.currentLocation))]
-                                      )
+                                      _vm._l(_vm.cat.locations, function(
+                                        location
+                                      ) {
+                                        return [
+                                          _c("cat-location-row", {
+                                            attrs: {
+                                              date: _vm.updatedAt(
+                                                location.updated_at
+                                              ),
+                                              location: location.location
+                                            }
+                                          })
+                                        ]
+                                      })
                                     ],
-                                    1
+                                    2
                                   )
                                 : _vm._e(),
                               _vm._v(" "),
@@ -61930,6 +61940,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             if (!this.imageChanged) {
                 delete cat.image;
             }
+
+            var locations = cat.locations.filter(function (item) {
+                return item.length > 0;
+            });
+            cat.locations = locations;
 
             axios.post('/cats', this.form).then(function (response) {
                 console.log('onMessage: ', response.data);
