@@ -15,7 +15,7 @@
             <div class="col-md-8 col-md-offset-2" v-if="!inProgress">
                 <template v-if="cats.length > 0">
                     <transition-group name="component-fade" mode="out-in">
-                        <cat-item v-for="cat in cats" :cat="cat" :key="cat.id"></cat-item>
+                        <cat-item v-for="cat in cats" :is_mediated="true" :cat="cat" :key="cat.id"></cat-item>
                     </transition-group>
                     <pagination :data="response" v-if="response != null"></pagination>
                 </template>

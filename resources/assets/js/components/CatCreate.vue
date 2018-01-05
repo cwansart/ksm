@@ -59,7 +59,6 @@
                                         <option value="present" :selected="form.status == 'present'">Anwesend</option>
                                         <option value="in_care" :selected="form.status == 'in_care'">Pflegetier</option>
                                         <option value="deceased" :selected="form.status == 'deceased'">Verstorben</option>
-                                        <option value="mediated" :selected="form.status == 'mediated'">Vermittelt</option>
                                     </select>
                                 </div>
 

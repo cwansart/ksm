@@ -11,8 +11,12 @@
                         <span :class="{ 'rotated': showDetails }" class="open-close-btn glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
                     </button>
 
-                    <router-link :to="{ name: 'catEdit', params: { id: cat.id }}" class="close rm1"  aria-label="Edit" data-toggle="tooltip" data-placement="bottom" title="Daten bearbeiten">
+                    <router-link :to="{ name: 'catEdit', params: { id: cat.id }}" class="close rm1"  aria-label="Edit" data-toggle="tooltip" data-placement="bottom" title="Daten bearbeiten" v-if="isMediatable">
                         <span class="open-close-btn glyphicon glyphicon-edit" aria-hidden="true"></span>
+                    </router-link>
+
+                    <router-link :to="{ name: 'catMediate', params: { id: cat.id }}" class="close rm1"  aria-label="Mediate" data-toggle="tooltip" data-placement="bottom" title="Katze vermitteln" v-if="isMediatable">
+                        <small>vermitteln</small> <span class="glyphicon glyphicon-share" aria-hidden="true"></span>
                     </router-link>
 
                     <transition name="component-fade" mode="out-in">
@@ -122,8 +126,17 @@
                 </li>
             </ul>
         </div>
-        <div class="panel-footer is-present" v-if="this.cat.status == 'in_care'">
+        <div class="panel-footer is-present" v-if="this.cat.status == 'present'">
             Anwesend
+        </div>
+        <div class="panel-footer is-mediated" v-if="this.cat.status == 'mediated'">
+            Vermittelt
+        </div>
+        <div class="panel-footer is-in-care" v-if="this.cat.status == 'in_care'">
+            In Pflege
+        </div>
+        <div class="panel-footer is-deceased" v-if="this.cat.status == 'deceased'">
+            Verstorben
         </div>
     </div>
 </template>
@@ -131,7 +144,8 @@
 <script>
     export default {
         props: [
-            'cat'
+            'cat',
+            'is_mediated'
         ],
 
         data: function () {
@@ -155,6 +169,16 @@
                     case 'in_care': return 'in Pflege';
                     case 'deceased': return 'verstorben';
                     case 'mediated': return 'vermittelt';
+                }
+            },
+
+            isMediatable() {
+                switch (this.cat.status) {
+                    case 'present':
+                    case 'in_care':
+                        return true;
+                    default:
+                        return false;
                 }
             }
         },
@@ -219,6 +243,18 @@
 
     .is-present {
         background-color: rgba(68,194,239,0.33);
+    }
+
+    .is-mediated {
+        background-color: palegreen;
+    }
+
+    .is-in-care {
+        background-color: beige;
+    }
+
+    .is-deceased {
+        background-color: #cdbecd;
     }
 </style>
 

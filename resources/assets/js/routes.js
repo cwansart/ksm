@@ -1,4 +1,4 @@
-import VueRouter from 'vue-router'
+import VueRouter from 'vue-router';
 
 let routes = [
     {
@@ -12,27 +12,32 @@ let routes = [
     },
     {
         path: '/cats/present',
-        component: require('./components/CatPresent')
+        component: require('./components/CatIndexPresent')
     },
     {
         path: '/cats/deceased',
-        component: require('./components/CatDeceased')
+        component: require('./components/CatIndexDeceased')
     },
     {
         path: '/cats/mediated',
-        component: require('./components/CatMediated')
+        component: require('./components/CatIndexMediated')
     },
     {
         path: '/cats/in_care',
-        component: require('./components/CatInCare')
+        component: require('./components/CatIndexInCare')
     },
     {
         name: 'catEdit',
         path: '/cats/:id/edit',
         component: require('./components/CatEdit')
+    },
+    {
+        name: 'catMediate',
+        path: '/cats/:id/mediate',
+        component: require('./components/CatMediate')
     }
-]
+];
 
 export default new VueRouter({
     routes
-})
+});

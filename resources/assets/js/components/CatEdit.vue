@@ -73,7 +73,6 @@
                                             <option value="present" :selected="form.status == 'present'">Anwesend</option>
                                             <option value="in_care" :selected="form.status == 'in_care'">Pflegetier</option>
                                             <option value="deceased" :selected="form.status == 'deceased'">Verstorben</option>
-                                            <option value="mediated" :selected="form.status == 'mediated'">Vermittelt</option>
                                         </select>
                                     </div>
 
@@ -347,25 +346,37 @@
         },
 
         created() {
-            let id = parseInt(this.$route.params.id || '1');
+            let id = parseInt(this.$route.params.id);
             axios.get('/cats/' + id)
-            .then(response => {
-                response.data.locations = [];
-                this.form = response.data;
-                this.id = this.form.id;
+                .then(response => {
+                    if (response.data.status === 'mediated') {
+                        throw {
+                            type: 'mediated',
+                            message: 'Cannot edit mediated cats'
+                        };
+                    }
 
-                if (response.data.photo_path !== null) {
-                    this.form.image = window.publicPhotosPath + '/' + response.data.photo_path;
-                    delete this.form.photo_path;
-                } else {
-                    this.form.image = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg==';
-                }
-                this.loading = false;
-            })
-            .catch(error => {
-                this.loadingError = 'Beim Laden der Daten ist ein Fehler aufgetreten. Möglicherweise existiert der gewünschte Eintrag nicht mehr.';
-                console.error('Error while loading data:', error);
-            })
+                    response.data.locations = [];
+                    this.form = response.data;
+                    this.id = this.form.id;
+
+                    if (response.data.photo_path !== null) {
+                        this.form.image = window.publicPhotosPath + '/' + response.data.photo_path;
+                        delete this.form.photo_path;
+                    } else {
+                        this.form.image = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/PjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PCEtLQpTb3VyY2UgVVJMOiBob2xkZXIuanMvNjR4NjQKQ3JlYXRlZCB3aXRoIEhvbGRlci5qcyAyLjYuMC4KTGVhcm4gbW9yZSBhdCBodHRwOi8vaG9sZGVyanMuY29tCihjKSAyMDEyLTIwMTUgSXZhbiBNYWxvcGluc2t5IC0gaHR0cDovL2ltc2t5LmNvCi0tPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbI2hvbGRlcl8xNWUwM2M1M2QzZCB0ZXh0IHsgZmlsbDojQUFBQUFBO2ZvbnQtd2VpZ2h0OmJvbGQ7Zm9udC1mYW1pbHk6QXJpYWwsIEhlbHZldGljYSwgT3BlbiBTYW5zLCBzYW5zLXNlcmlmLCBtb25vc3BhY2U7Zm9udC1zaXplOjEwcHQgfSBdXT48L3N0eWxlPjwvZGVmcz48ZyBpZD0iaG9sZGVyXzE1ZTAzYzUzZDNkIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNFRUVFRUUiLz48Zz48dGV4dCB4PSIxMy4xNzk2ODc1IiB5PSIzNi41Ij42NHg2NDwvdGV4dD48L2c+PC9nPjwvc3ZnPg==';
+                    }
+                    this.loading = false;
+                })
+                .catch(error => {
+                    if (error.type !== undefined && error.type === 'mediated') {
+                        this.loadingError = 'Die gewünschte Katze kann nicht bearbeitet werden, da sie bereits vermittelt wurde.';
+                        console.error('Error while loading data:', error.message);
+                    } else {
+                        this.loadingError = 'Beim Laden der Daten ist ein Fehler aufgetreten. Möglicherweise existiert der gewünschte Eintrag nicht mehr.';
+                        console.error('Error while loading data:', error);
+                    }
+                })
         },
 
         methods: {

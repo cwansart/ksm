@@ -59,4 +59,9 @@ class Cat extends Model
     {
         return $this->hasMany('App\Location');
     }
+
+    public function mediations()
+    {
+        return $this->hasMany('App\Mediation');
+    }
 }
