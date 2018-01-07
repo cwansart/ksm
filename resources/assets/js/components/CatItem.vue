@@ -39,9 +39,7 @@
                                 <li :class="{ 'active': activeTab == 'basisdaten' }" @click="setActiveTab('basisdaten')"><a href="#" @click.prevent>Basisdaten</a></li>
                                 <li :class="{ 'active': activeTab == 'aufnahme-und-abgabe' }" @click="setActiveTab('aufnahme-und-abgabe')"><a href="#" @click.prevent>Aufnahme und Abgabe</a></li>
                                 <li :class="{ 'active': activeTab == 'aufenthaltsort' }" @click="setActiveTab('aufenthaltsort')"><a href="#" @click.prevent>Aufenthaltsort</a></li>
-                                <li :class="{ 'active': activeTab == 'kastration' }" @click="setActiveTab('kastration')"><a href="#" @click.prevent>Kastration</a></li>
-                                <li :class="{ 'active': activeTab == 'impfungen' }" @click="setActiveTab('impfungen')"><a href="#" @click.prevent>Impfungen</a></li>
-                                <li :class="{ 'active': activeTab == 'tattoo' }" @click="setActiveTab('tattoo')"><a href="#" @click.prevent>Tätowierung/Chip</a></li>
+                                <li :class="{ 'active': activeTab == 'zustand' }" @click="setActiveTab('zustand')"><a href="#" @click.prevent>Zustand</a></li>
                                 <li :class="{ 'active': activeTab == 'kommentare-und-merkmale' }" @click="setActiveTab('kommentare-und-merkmale')"><a href="#" @click.prevent>Kommentare und Merkmale</a></li>
                                 <li :class="{ 'active': activeTab == 'eigenschaften' }" @click="setActiveTab('eigenschaften')"><a href="#" @click.prevent>Eigenschaften</a></li>
                             </ul>
@@ -81,22 +79,18 @@
                                     </template>
                                 </div>
 
-                                <div class="kastration" v-if="activeTab == 'kastration'" key="4">
+                                <div class="kastration" v-if="activeTab == 'zustand'" key="4">
                                     <h2>Kastration</h2>
 
                                     <cat-detail-row label="Kastriert">{{ cat.is_castrated ? 'ja' : 'nein' }}</cat-detail-row>
                                     <cat-detail-row label="Kastrationsdatum">{{ moment(cat.castration_date).isValid() ? moment(cat.castration_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
-                                </div>
 
-                                <div class="impfungen" v-if="activeTab == 'impfungen'" key="5">
                                     <h2>Impfungen</h2>
 
                                     <cat-detail-row label="1. Impfung">{{ moment(cat.first_vacciation).isValid() ? moment(cat.first_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
                                     <cat-detail-row label="2. Impfung">{{ moment(cat.second_vacciation).isValid() ? moment(cat.second_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
                                     <cat-detail-row label="Nächste Impfung">{{ moment(cat.next_vacciation).isValid() ? moment(cat.next_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
-                                </div>
 
-                                <div class="tattoo" v-if="activeTab == 'tattoo'" key="6">
                                     <h2>Tätowierung/Chip</h2>
 
                                     <cat-detail-row label="Tätowierung links">{{ cat.tattoo_left || 'keins vorhanden' }}</cat-detail-row>
