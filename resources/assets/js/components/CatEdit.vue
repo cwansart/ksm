@@ -57,11 +57,11 @@
 
                                     <div class="radio" :class="{ 'has-error': ('is_male' in error.errors) }">
                                         <label class="radio-inline">
-                                            <input type="radio" name="is_male" v-model="form.is_male" value="true" :checked="form.is_male == true">
+                                            <input type="radio" name="is_male" v-model="form.is_male" value="1" :checked="form.is_male === 1 || form.is_male === true">
                                             männlich
                                         </label>
                                         <label class="radio-inline">
-                                            <input type="radio" name="is_male" v-model="form.is_male" value="false" :checked="form.is_male == false">
+                                            <input type="radio" name="is_male" v-model="form.is_male" value="0" :checked="form.is_male === 0 || form.is_male === false">
                                             weiblich
                                         </label><br>
                                         <p class="text-danger" role="alert" v-if="('is_male' in error.errors)" v-text="error.errors.is_male[0]"></p>
@@ -359,6 +359,7 @@
                     response.data.locations = [];
                     this.form = response.data;
                     this.id = this.form.id;
+                    this.form.is_male = this.form.is_male === true ? 1 : 0;
 
                     if (response.data.photo_path !== null) {
                         this.form.image = window.publicPhotosPath + '/' + response.data.photo_path;
