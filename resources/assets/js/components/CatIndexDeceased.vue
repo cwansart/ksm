@@ -2,7 +2,6 @@
     <div>
         <div class="row">
             <div class="col-md-8 col-md-offset-2 toolbox">
-                <router-link to="/cats/create" class="btn btn-success pull-right">Katze aufnehmen</router-link>
                 <pagination :data="response" v-if="response != null"></pagination>
             </div>
         </div>
