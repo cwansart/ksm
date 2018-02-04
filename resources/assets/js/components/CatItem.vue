@@ -19,6 +19,10 @@
                         <small>vermitteln</small> <span class="glyphicon glyphicon-share" aria-hidden="true"></span>
                     </router-link>
 
+                    <router-link :to="{ name: 'catRetake', params: { id: cat.id }}" class="close rm1"  aria-label="Retake" data-toggle="tooltip" data-placement="bottom" title="Katze wieder aufnehmen" v-if="isDeadOrMediated">
+                        <small>wieder aufnehmen</small> <span class="glyphicon glyphicon-retweet" aria-hidden="true"></span>
+                    </router-link>
+
                     <transition name="component-fade" mode="out-in">
                         <div v-if="!showDetails" key="101">
                             <div class="media-left" v-if="photoSrc !== null">
@@ -170,6 +174,16 @@
                 switch (this.cat.status) {
                     case 'present':
                     case 'in_care':
+                        return true;
+                    default:
+                        return false;
+                }
+            },
+
+            isDeadOrMediated() {
+                switch (this.cat.status) {
+                    case 'mediated':
+                    case 'deceased':
                         return true;
                     default:
                         return false;

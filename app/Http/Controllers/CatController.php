@@ -108,4 +108,19 @@ class CatController extends Controller
     {
         abort(501); // Not implemented yet
     }
+
+    /**
+     * Resets the cat's status to 'present'.
+     *
+     * @param Request $request
+     * @return array
+     */
+    public function resetStatus(Request $request)
+    {
+        $id = $request->get('cat_id');
+        $cat = Cat::findOrFail($id);
+
+        $cat->update(['status' => 'present']);
+        return ['message' => trans('messages.cat_retaken'), 'cat_id' => $cat->id];
+    }
 }

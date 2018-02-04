@@ -35,6 +35,11 @@ let routes = [
         name: 'catMediate',
         path: '/cats/:id/mediate',
         component: require('./components/CatMediate')
+    },
+    {
+        name: 'catRetake',
+        path: '/cats/:id/retake',
+        component: require('./components/CatRetake')
     }
 ];
 
