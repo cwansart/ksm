@@ -7,8 +7,8 @@
         <div class="panel-body">
             <ul class="media-list">
                 <li class="media">
-                    <button type="button" @click="toggle" class=" close" aria-label="Show" data-toggle="tooltip" data-placement="bottom" title="Details anzeigen/verstecken">
-                        <span :class="{ 'rotated': showDetails }" class="open-close-btn glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
+                    <button type="button" class="close" data-toggle="modal" :data-target="modalTarget">
+                        <span class="open-close-btn glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
                     </button>
 
                     <router-link :to="{ name: 'catEdit', params: { id: cat.id }}" class="close rm1"  aria-label="Edit" data-toggle="tooltip" data-placement="bottom" title="Daten bearbeiten" v-if="isMediatable">
@@ -23,123 +23,83 @@
                         <small>wieder aufnehmen</small> <span class="glyphicon glyphicon-retweet" aria-hidden="true"></span>
                     </router-link>
 
-                    <transition name="component-fade" mode="out-in">
-                        <div v-if="!showDetails" key="101">
-                            <div class="media-left" v-if="photoSrc !== null">
-                                <a href="#">
-                                    <img class="media-object cat-pic" :src="photoSrc">
-                                </a>
-                            </div>
-
-                            <div class="media-body">
-                                <h4 class="media-heading">{{ cat.key }} {{ cat.name }}</h4>
-                                <small><i>Eingetragen am: {{ moment(cat.created_at).format(momentDateFormat) }}</i></small><br>
-                                {{ cat.color }}
-                            </div>
+                    <div key="101">
+                        <div class="media-left" v-if="photoSrc !== null">
+                            <a href="#">
+                                <img class="media-object cat-pic" :src="photoSrc">
+                            </a>
                         </div>
 
-                        <div v-else key="102">
-                            <ul class="nav nav-tabs">
-                                <li :class="{ 'active': activeTab == 'basisdaten' }" @click="setActiveTab('basisdaten')"><a href="#" @click.prevent>Basisdaten</a></li>
-                                <li :class="{ 'active': activeTab == 'aufnahme-und-abgabe' }" @click="setActiveTab('aufnahme-und-abgabe')"><a href="#" @click.prevent>Aufnahme und Abgabe</a></li>
-                                <li :class="{ 'active': activeTab == 'aufenthaltsort' }" @click="setActiveTab('aufenthaltsort')"><a href="#" @click.prevent>Aufenthaltsort</a></li>
-                                <li :class="{ 'active': activeTab == 'zustand' }" @click="setActiveTab('zustand')"><a href="#" @click.prevent>Zustand</a></li>
-                                <li :class="{ 'active': activeTab == 'kommentare-und-merkmale' }" @click="setActiveTab('kommentare-und-merkmale')"><a href="#" @click.prevent>Kommentare und Merkmale</a></li>
-                                <li :class="{ 'active': activeTab == 'eigenschaften' }" @click="setActiveTab('eigenschaften')"><a href="#" @click.prevent>Eigenschaften</a></li>
-                            </ul>
+                        <div class="media-body">
+                            <h4 class="media-heading">{{ cat.key }} {{ cat.name }}</h4>
+                            <small><i>Eingetragen am: {{ moment(cat.created_at).format(momentDateFormat) }}</i></small><br>
+                            {{ cat.color }}
+                        </div>
+                    </div>
 
-                            <transition name="component-fade" mode="out-in">
-                                <div id="basisdaten" v-if="activeTab == 'basisdaten'" key="1">
-                                    <h2>Basisdaten</h2>
-
-                                    <div class="media-left" v-if="photoSrc !== null">
-                                        <a href="#">
-                                            <img class="media-object cat-pic" :src="photoSrc">
-                                        </a>
+                    <div class="modal fade" :id="modalId" tabindex="-1" role="dialog" aria-labelledby="detail">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-body">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">Tierdetails</h4>
                                     </div>
 
-                                    <cat-detail-row label="Name">{{ cat.name || 'keiner angegeben' }}</cat-detail-row>
-                                    <cat-detail-row label="Rasse">{{ cat.breed || 'keine angegeben' }}</cat-detail-row>
-                                    <cat-detail-row label="Farbe">{{ cat.color }}</cat-detail-row>
-                                    <cat-detail-row label="Geburtsdatum">{{ cat.date_of_birth || 'keins angegeben' }}</cat-detail-row>
-                                    <cat-detail-row label="Geschlecht">{{ cat.is_male ? 'männlich' : 'weiblich' }}</cat-detail-row>
-                                    <cat-detail-row label="Status">{{ humanFriendlyStatus }}</cat-detail-row>
-                                    <cat-detail-row label="Todesursache" v-if="cat.status == 'deceased'">{{ cat.cause_of_death || 'keiner angegeben' }}</cat-detail-row>
+                                    <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+                                        <cat-item-group title="Aufnahme und Abgabe" id="registrationAndLeave" opened="true">
+                                            <cat-detail-row label="Aufnahmedatum">{{ moment(cat.registration_date).isValid() ? moment(cat.registration_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
+                                            <cat-detail-row label="Abgabedatum">{{ moment(cat.leave_date).isValid() ? moment(cat.leave_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
+                                        </cat-item-group>
 
+                                        <cat-item-group title="Aufenthaltsort" id="location">
+                                            <template v-for="location in cat.locations">
+                                                <cat-location-row :date="updatedAt(location.updated_at)" :location="location.location"></cat-location-row>
+                                            </template>
+                                        </cat-item-group>
+
+                                        <cat-item-group title="Kastration, Impfung, Tätowierung & Chip" id="castrationVaccinationTattooAndChip">
+                                            <cat-detail-row label="Kastriert">{{ cat.is_castrated ? 'ja' : 'nein' }}</cat-detail-row>
+                                            <cat-detail-row label="Kastrationsdatum">{{ moment(cat.castration_date).isValid() ? moment(cat.castration_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
+
+                                            <cat-detail-row label="1. Impfung">{{ moment(cat.first_vacciation).isValid() ? moment(cat.first_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
+                                            <cat-detail-row label="2. Impfung">{{ moment(cat.second_vacciation).isValid() ? moment(cat.second_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
+                                            <cat-detail-row label="Nächste Impfung">{{ moment(cat.next_vacciation).isValid() ? moment(cat.next_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
+
+                                            <cat-detail-row label="Tätowierung links">{{ cat.tattoo_left || 'keins vorhanden' }}</cat-detail-row>
+                                            <cat-detail-row label="Tätowierung links">{{ cat.tattoo_right || 'keins vorhanden' }}</cat-detail-row>
+                                            <cat-detail-row label="Chip">{{ cat.chip || 'keiner vorhanden' }}</cat-detail-row>
+                                        </cat-item-group>
+
+                                        <cat-item-group title="Kommentare und Merkmale" id="commentsAndDistinguisingMarks">
+                                            <cat-detail-row label="Merkmale">{{ cat.distinguishing_marks || 'keine angegeben' }}</cat-detail-row>
+                                            <cat-detail-row label="Kommentare">{{ cat.comments || 'keine angegeben' }}</cat-detail-row>
+                                        </cat-item-group>
+
+                                        <cat-item-group title="Eigenschaften" id="properties">
+                                            <cat-detail-row label="Außenkatze">{{ cat.is_outdoor_cat ? 'ja' : 'nein' }}</cat-detail-row>
+                                            <cat-detail-row label="Innenkatze">{{ cat.is_indoor_cat ? 'ja' : 'nein' }}</cat-detail-row>
+                                            <cat-detail-row label="Katzenfreundlich">{{ cat.is_cat_friendly ? 'ja' : 'nein' }}</cat-detail-row>
+                                            <cat-detail-row label="Hundefreundlich">{{ cat.is_dog_friendly ? 'ja' : 'nein' }}</cat-detail-row>
+                                            <cat-detail-row label="Kinderfreundlich">{{ cat.is_child_friendly ? 'ja' : 'nein' }}</cat-detail-row>
+                                        </cat-item-group>
+                                    </div>
                                 </div>
-
-                                <div class="aufnahme-und-abgabe" v-if="activeTab == 'aufnahme-und-abgabe'" key="2">
-                                    <h2>Aufnahme und Abgabe</h2>
-
-                                    <cat-detail-row label="Aufnahmedatum">{{ moment(cat.registration_date).isValid() ? moment(cat.registration_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
-                                    <cat-detail-row label="Abgabedatum">{{ moment(cat.leave_date).isValid() ? moment(cat.leave_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
-                                </div>
-
-                                <div class="aufenthaltsort" v-if="activeTab == 'aufenthaltsort'" key="3">
-                                    <h2>Aufenthaltsorte</h2>
-
-                                    <template v-for="location in cat.locations">
-                                        <cat-location-row :date="updatedAt(location.updated_at)" :location="location.location"></cat-location-row>
-                                    </template>
-                                </div>
-
-                                <div class="kastration" v-if="activeTab == 'zustand'" key="4">
-                                    <h2>Kastration</h2>
-
-                                    <cat-detail-row label="Kastriert">{{ cat.is_castrated ? 'ja' : 'nein' }}</cat-detail-row>
-                                    <cat-detail-row label="Kastrationsdatum">{{ moment(cat.castration_date).isValid() ? moment(cat.castration_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
-
-                                    <h2>Impfungen</h2>
-
-                                    <cat-detail-row label="1. Impfung">{{ moment(cat.first_vacciation).isValid() ? moment(cat.first_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
-                                    <cat-detail-row label="2. Impfung">{{ moment(cat.second_vacciation).isValid() ? moment(cat.second_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
-                                    <cat-detail-row label="Nächste Impfung">{{ moment(cat.next_vacciation).isValid() ? moment(cat.next_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
-
-                                    <h2>Tätowierung/Chip</h2>
-
-                                    <cat-detail-row label="Tätowierung links">{{ cat.tattoo_left || 'keins vorhanden' }}</cat-detail-row>
-                                    <cat-detail-row label="Tätowierung links">{{ cat.tattoo_right || 'keins vorhanden' }}</cat-detail-row>
-                                    <cat-detail-row label="Chip">{{ cat.chip || 'keiner vorhanden' }}</cat-detail-row>
-                                </div>
-
-                                <div class="kommentare-und-merkmale" v-if="activeTab == 'kommentare-und-merkmale'" key="7">
-                                    <h2>Kommentare und Merkmale</h2>
-
-                                    <cat-detail-row label="Merkmale">{{ cat.distinguishing_marks || 'keine angegeben' }}</cat-detail-row>
-                                    <cat-detail-row label="Kommentare">{{ cat.comments || 'keine angegeben' }}</cat-detail-row>
-                                </div>
-
-                                <div class="eigenschaften" v-if="activeTab == 'eigenschaften'" key="9">
-                                    <h2>Eigenschaften</h2>
-
-                                    <cat-detail-row label="Außenkatze">{{ cat.is_outdoor_cat ? 'ja' : 'nein' }}</cat-detail-row>
-                                    <cat-detail-row label="Innenkatze">{{ cat.is_indoor_cat ? 'ja' : 'nein' }}</cat-detail-row>
-                                    <cat-detail-row label="Katzenfreundlich">{{ cat.is_cat_friendly ? 'ja' : 'nein' }}</cat-detail-row>
-                                    <cat-detail-row label="Hundefreundlich">{{ cat.is_dog_friendly ? 'ja' : 'nein' }}</cat-detail-row>
-                                    <cat-detail-row label="Kinderfreundlich">{{ cat.is_child_friendly ? 'ja' : 'nein' }}</cat-detail-row>
-                                </div>
-                            </transition>
+                            </div>
                         </div>
-                    </transition>
+                    </div>
                 </li>
             </ul>
         </div>
-        <div class="panel-footer is-present" v-if="this.cat.status == 'present'">
-            Anwesend
-        </div>
-        <div class="panel-footer is-mediated" v-if="this.cat.status == 'mediated'">
-            Vermittelt
-        </div>
-        <div class="panel-footer is-in-care" v-if="this.cat.status == 'in_care'">
-            In Pflege
-        </div>
-        <div class="panel-footer is-deceased" v-if="this.cat.status == 'deceased'">
-            Verstorben
+        <div class="panel-footer" :class="currentClass">
+            {{ humanFriendlyStatus }}
         </div>
     </div>
 </template>
 
 <script>
+    import CatItemGroup from "./CatItemGroup";
+
     export default {
         props: [
             'cat',
@@ -170,6 +130,15 @@
                 }
             },
 
+            currentClass() {
+                switch (this.cat.status) {
+                    case 'present': return 'is-present';
+                    case 'in_care': return 'is-in-care';
+                    case 'deceased': return 'is-deceased';
+                    case 'mediated': return 'is-mediated';
+                }
+            },
+
             isMediatable() {
                 switch (this.cat.status) {
                     case 'present':
@@ -188,10 +157,19 @@
                     default:
                         return false;
                 }
+            },
+
+            modalId() {
+                return 'modalCat-' + this.cat.id;
+            },
+
+            modalTarget() {
+                return '#modalCat-' + this.cat.id;
             }
         },
 
         components: {
+            CatItemGroup,
             'cat-detail-row': require('./CatDetailRow'),
             'cat-detail-tab': { template: '<div><slot></slot></div>' },
             'cat-location-row': {
