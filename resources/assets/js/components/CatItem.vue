@@ -47,7 +47,23 @@
                                     </div>
 
                                     <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
-                                        <cat-item-group title="Aufnahme und Abgabe" id="registrationAndLeave" opened="true">
+                                        <cat-item-group title="Basisdaten" id="baseData" opened="true">
+                                            <div class="media-left" v-if="photoSrc !== null">
+                                                <a :href="photoSrc" target="_blank">
+                                                    <img class="media-object cat-pic-big img-thumbnail" :src="photoSrc">
+                                                </a>
+                                            </div>
+
+                                            <cat-detail-row label="Name">{{ cat.name || 'keiner angegeben' }}</cat-detail-row>
+                                            <cat-detail-row label="Rasse">{{ cat.breed || 'keine angegeben' }}</cat-detail-row>
+                                            <cat-detail-row label="Farbe">{{ cat.color }}</cat-detail-row>
+                                            <cat-detail-row label="Geburtsdatum">{{ cat.date_of_birth || 'keins angegeben' }}</cat-detail-row>
+                                            <cat-detail-row label="Geschlecht">{{ cat.is_male ? 'männlich' : 'weiblich' }}</cat-detail-row>
+                                            <cat-detail-row label="Status">{{ humanFriendlyStatus }}</cat-detail-row>
+                                            <cat-detail-row label="Todesursache" v-if="cat.status == 'deceased'">{{ cat.cause_of_death || 'keiner angegeben' }}</cat-detail-row>
+                                        </cat-item-group>
+
+                                        <cat-item-group title="Aufnahme und Abgabe" id="registrationAndLeave">
                                             <cat-detail-row label="Aufnahmedatum">{{ moment(cat.registration_date).isValid() ? moment(cat.registration_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
                                             <cat-detail-row label="Abgabedatum">{{ moment(cat.leave_date).isValid() ? moment(cat.leave_date).format(momentDateFormat) : 'keins angegeben' }}</cat-detail-row>
                                         </cat-item-group>
@@ -67,7 +83,7 @@
                                             <cat-detail-row label="Nächste Impfung">{{ moment(cat.next_vacciation).isValid() ? moment(cat.next_vacciation).format(momentDateFormat) : 'keine Angabe' }}</cat-detail-row>
 
                                             <cat-detail-row label="Tätowierung links">{{ cat.tattoo_left || 'keins vorhanden' }}</cat-detail-row>
-                                            <cat-detail-row label="Tätowierung links">{{ cat.tattoo_right || 'keins vorhanden' }}</cat-detail-row>
+                                            <cat-detail-row label="Tätowierung rechts">{{ cat.tattoo_right || 'keins vorhanden' }}</cat-detail-row>
                                             <cat-detail-row label="Chip">{{ cat.chip || 'keiner vorhanden' }}</cat-detail-row>
                                         </cat-item-group>
 
@@ -213,6 +229,12 @@
     .cat-pic {
         max-width: 64px;
         max-height: 64px;
+    }
+
+    .cat-pic-big {
+        max-width: 128px;
+        max-height: 128px;
+        margin-bottom: 1em;
     }
 
     .open-close-btn {
