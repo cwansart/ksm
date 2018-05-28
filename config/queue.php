@@ -39,6 +39,7 @@ return [
             'table' => 'jobs',
             'queue' => 'default',
             'retry_after' => 90,
+            'block_for' => null,
         ],
 
         'beanstalkd' => [
